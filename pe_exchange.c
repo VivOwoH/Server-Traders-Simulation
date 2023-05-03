@@ -17,6 +17,7 @@ struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
+    puts("exchange received sigusr1");
     signal_node node = (signal_node) malloc(sizeof(struct linkedList));
     node->pid = info->si_pid;
     node->next = NULL;
@@ -47,35 +48,44 @@ int main(int argc, char ** argv) {
     // i.e. exchange_child_0 [exchange_fd_0] <-> [trader_fd_0] trader 0
     pids = malloc(sizeof(pid_t) * (num_traders));
     for (int i = 0; i < num_traders; i++) {
-        pid_t pid = fork(); // child pid
+        pid_t pid = fork();
         pids[i] = pid;
 
-        if (pid == 0) { // child process: exec binary
+        if (pid < 0) {
+            perror("Fork error");
+            exit(2);
+        }
+        else if (pid == 0) { // child process: exec binary
             char buffer[BUFFLEN];
             snprintf(buffer, BUFFLEN,"%d",i);
             execl(argv[i+2], argv[i+2], buffer, (char*) NULL); 
             perror("execv"); // If exec success it will never return
             exit(3);
         } 
-        else if (pid < 0) {
-            perror("Fork error");
-            exit(2);
-        }
-        // exchange send "market open" & sigusr1
-        if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
-            char msg[] = "MARKET OPEN;";
-            write(exchange_pool->fds_set[i], msg, strlen(msg));
-            kill(pids[i], SIGUSR1);
-        }
+        // printf("parent%d\n", getpid());
+        // printf("pids[i]%d\n", pids[i]);
     }
 
+    puts("parent");
+    
     // register signal handler
-    sigset_t mask;
+    sigset_t mask, prev;
     Signal(SIGUSR1, sigusr1_handler);
     sigemptyset(&mask); // clears all signals in mask
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
-    while (trader_pool->num_rfds > 0 && exchange_pool->num_rfds > 0) {
+    // exchange send "market open" & sigusr1
+    for (int i = 0; i < num_traders; i++) {
+        if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
+            char msg[] = "MARKET OPEN;";
+            write(exchange_pool->fds_set[i], msg, strlen(msg));
+            printf("pids[i]%d\n", pids[i]);
+            sigsuspend(&prev);
+            kill(pids[i], SIGUSR1);
+        }
+    }
+
+    while (1) {
         // wait for fds to become "ready"
         trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
         exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, NULL);

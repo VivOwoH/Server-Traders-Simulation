@@ -23,7 +23,7 @@ pe_trader: $(TR_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -c $< -o $@ 
 
 run:
-	./$(TARGET) $(FILE) ./trader_a
+	./$(TARGET) $(FILE) ./pe_trader
 
 tests:
 	echo "additional c file for tests":

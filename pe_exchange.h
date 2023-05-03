@@ -16,6 +16,9 @@ struct fd_pool {
                       // IMPORTANT: select can only handle < 1024 fds; enough for the purpose of this assignment
 };
 
+extern struct fd_pool * exchange_pool;
+extern struct fd_pool * trader_pool;
+
 struct linkedList {
     int pid;
     struct linkedList * next;
