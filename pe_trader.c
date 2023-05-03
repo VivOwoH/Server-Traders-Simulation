@@ -16,6 +16,8 @@ int main(int argc, char ** argv) {
     int trader_id = atoi(argv[1]);
     int order_id = 0;
 
+    puts("running");
+
     // register signal handler
     sigset_t mask, prev;
 
@@ -29,10 +31,10 @@ int main(int argc, char ** argv) {
     snprintf(buffer_trader, BUFFLEN, FIFO_TRADER, trader_id);
 
     // for the exchange write to each trader (read)
-    int fd_read = open(buffer_exchange, O_RDONLY);
+    int fd_read = open(buffer_exchange, O_RDONLY | O_NONBLOCK);
 
     // for each trader to write to the exchange (write)
-    int fd_write = open(buffer_trader, O_WRONLY);
+    int fd_write = open(buffer_trader, O_WRONLY | O_NONBLOCK);
     
     // event loop:
     while (1) {
@@ -59,8 +61,6 @@ int main(int argc, char ** argv) {
         }
         // printf("%s %s %s %d %d\n", arg0, cmd, product, qty, price);
 
-        sigprocmask(SIG_SETMASK, &prev, NULL); // unblock
-
         if (qty >= 1000) {// disconnect and shut down if BUY with qty>=1000
             break;
         }
@@ -74,6 +74,7 @@ int main(int argc, char ** argv) {
         else if (strcmp(arg0, "ACCEPTED") == 0) {
             order_id++;
         }
+        sigprocmask(SIG_SETMASK, &prev, NULL); // unblock
     }
     close(fd_read); // disconnect with exchange
     close(fd_write); // shutdown trader client

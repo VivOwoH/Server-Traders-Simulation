@@ -48,6 +48,7 @@ int main(int argc, char ** argv) {
     pids = malloc(sizeof(pid_t) * (num_traders));
     for (int i = 0; i < num_traders; i++) {
         pids[i] = fork(); // child pid
+        
         if (pids[i] < 0) {
             perror("Fork error");
             exit(2);
@@ -142,7 +143,7 @@ void parse_products(char* filename) {
 
 // create pipes for traders
 void ini_pipes() {
-    for (int i = 0; i < num_traders; i++) {  
+    for (int i = 0; i < num_traders; i++) {
         char fifo_buffer_ex[BUFFLEN], fifo_buffer_tr[BUFFLEN];
         snprintf(fifo_buffer_ex, BUFFLEN, FIFO_EXCHANGE, i); // i = assigned trader id (from 0)  
         snprintf(fifo_buffer_tr, BUFFLEN, FIFO_TRADER, i);  
@@ -150,15 +151,27 @@ void ini_pipes() {
         unlink(fifo_buffer_tr);
 
         // create two named pipes
-        mkfifo(fifo_buffer_ex, 0777); // read, write, & execute for owner, group and others
-        mkfifo(fifo_buffer_tr, 0777);
+        // 0777 = read, write, & execute for owner, group and others
+        if (mkfifo(fifo_buffer_tr, 0777) == -1) {
+            perror("make fifo_trader failed");
+            exit(4);
+        }
+        if (mkfifo(fifo_buffer_ex, 0777) == -1) {
+            perror("make fifo_exchange failed");
+            exit(4);
+        }
 
         // exchange write to fifo_ex; read from fifo_tr
-        int fd_tr = open(fifo_buffer_tr, O_RDONLY);
+        int fd_tr = open(fifo_buffer_tr, O_RDONLY | O_NONBLOCK);
+        int fd_ex = open(fifo_buffer_ex, O_WRONLY | O_NONBLOCK);
+        if (fd_tr == -1 || fd_ex == -1) {
+            printf("r_fd=%d w_fd=%d\n", fd_tr, fd_ex);
+            perror("open fifo failed");
+            exit(4);
+        }
         trader_pool->fds_set[i] = fd_tr;
-        int fd_ex = open(fifo_buffer_ex, O_WRONLY);
         exchange_pool->fds_set[i] = fd_ex;
-
+        
         if (fd_tr > trader_pool->maxfd)
             trader_pool->maxfd = fd_tr;
         if (fd_ex > exchange_pool->maxfd)
@@ -169,6 +182,7 @@ void ini_pipes() {
         FD_SET(fd_tr, &trader_pool->rfds); // add created fds to rfds
         FD_SET(fd_ex, &exchange_pool->rfds);
     }
+    return;
 }
 
 void free_mem() {

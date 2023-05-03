@@ -9,3 +9,4 @@ exit codes:
 1 - sigaction
 2 - fork
 3 - product num & provided num inconsistent
+4 - make fifo
