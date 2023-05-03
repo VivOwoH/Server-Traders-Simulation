@@ -64,11 +64,12 @@ int main(int argc, char ** argv) {
         } 
         // printf("parent%d\n", getpid());
         // printf("pids[i]%d\n", pids[i]);
+        usleep(50000);
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
+            // printf("%d pids[i]%d\n", i, pids[i]);
             char msg[] = "MARKET OPEN;";
             write(exchange_pool->fds_set[i], msg, strlen(msg));
-            usleep(50000);
-            kill(pid, SIGUSR1);
+            kill(pids[i], SIGUSR1);
         }
     }
     
@@ -184,9 +185,13 @@ void ini_pipes() {
         
         FD_ZERO(&trader_pool->rfds); // clear all
         FD_ZERO(&exchange_pool->rfds);
-        FD_SET(fd_tr, &trader_pool->rfds); // add created fds to rfds
-        FD_SET(fd_ex, &exchange_pool->rfds);
     }
+
+    for (int i = 0; i < num_traders; i++) {
+        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds); // add created fds to rfds
+        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds);
+    }
+
     return;
 }
 

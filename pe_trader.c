@@ -45,7 +45,7 @@ int main(int argc, char ** argv) {
     while (1) {
         sigprocmask(SIG_BLOCK, &mask, &prev); // block
         // wait for sigusr1 to be received
-        printf("child %d waiting for sigusr1", pid);
+        printf("child %d waiting for sigusr1\n", pid);
         fflush(stdout);
         sigsuspend(&prev);
 

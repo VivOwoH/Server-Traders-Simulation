@@ -23,7 +23,7 @@ pe_trader: $(TR_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -c $< -o $@ 
 
 run:
-	./$(TARGET) $(FILE) ./pe_trader
+	./$(TARGET) $(FILE) ./trader_a ./trader_b ./trader_c
 
 tests:
 	echo "additional c file for tests":
@@ -34,5 +34,5 @@ run_tests:
 
 .PHONY: clean
 clean:
-	rm -f $(BINARIES) *.o trader_a
+	rm -f $(BINARIES) *.o trader_a trader_b trader_c
 
