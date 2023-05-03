@@ -64,18 +64,11 @@ int main(int argc, char ** argv) {
         } 
         // printf("parent%d\n", getpid());
         // printf("pids[i]%d\n", pids[i]);
-    }
-
-    puts("parent");
-
-    // exchange send "market open" & sigusr1
-    for (int i = 0; i < num_traders; i++) {
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             char msg[] = "MARKET OPEN;";
             write(exchange_pool->fds_set[i], msg, strlen(msg));
-            printf("pids[i]%d\n", pids[i]);
-            usleep(20000);
-            // kill(pids[i], SIGUSR1);
+            usleep(50000);
+            kill(pid, SIGUSR1);
         }
     }
     
@@ -123,7 +116,7 @@ signal_node enqueue(signal_node node) {
 }
 
 void process_next_signal() {
-    while (head_sig != NULL) {
+    if (head_sig != NULL) {
         // Process the signal here
         // ...
         puts("next signal is being processed");
