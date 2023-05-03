@@ -38,7 +38,7 @@ int main(int argc, char ** argv) {
     exchange_pool->maxfd = 0;
     trader_pool->fds_set = malloc(sizeof(int) * (num_traders)); 
     exchange_pool->fds_set = malloc(sizeof(int) * (num_traders)); 
-    
+
     // initialization
     ini_pipes();
 
@@ -47,18 +47,19 @@ int main(int argc, char ** argv) {
     // i.e. exchange_child_0 [exchange_fd_0] <-> [trader_fd_0] trader 0
     pids = malloc(sizeof(pid_t) * (num_traders));
     for (int i = 0; i < num_traders; i++) {
-        pids[i] = fork(); // child pid
-        
-        if (pids[i] < 0) {
-            perror("Fork error");
-            exit(2);
-        }
-        if (pids[i] == 0) { // child process: exec binary
+        pid_t pid = fork(); // child pid
+        pids[i] = pid;
+
+        if (pid == 0) { // child process: exec binary
             char buffer[BUFFLEN];
-            snprintf(buffer, i,"%d",i);
+            snprintf(buffer, BUFFLEN,"%d",i);
             execl(argv[i+2], argv[i+2], buffer, (char*) NULL); 
             perror("execv"); // If exec success it will never return
             exit(3);
+        } 
+        else if (pid < 0) {
+            perror("Fork error");
+            exit(2);
         }
         // exchange send "market open" & sigusr1
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
@@ -163,14 +164,15 @@ void ini_pipes() {
 
         // exchange write to fifo_ex; read from fifo_tr
         int fd_tr = open(fifo_buffer_tr, O_RDONLY | O_NONBLOCK);
-        int fd_ex = open(fifo_buffer_ex, O_WRONLY | O_NONBLOCK);
+        trader_pool->fds_set[i] = fd_tr;
+        int fd_ex = open(fifo_buffer_ex, O_RDWR | O_NONBLOCK); // must read to open write in non-block
+        exchange_pool->fds_set[i] = fd_ex;
+        
         if (fd_tr == -1 || fd_ex == -1) {
             printf("r_fd=%d w_fd=%d\n", fd_tr, fd_ex);
             perror("open fifo failed");
             exit(4);
         }
-        trader_pool->fds_set[i] = fd_tr;
-        exchange_pool->fds_set[i] = fd_ex;
         
         if (fd_tr > trader_pool->maxfd)
             trader_pool->maxfd = fd_tr;

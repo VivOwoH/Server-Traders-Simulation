@@ -1,7 +1,7 @@
 #include "pe_trader.h"
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    // puts("received signal");
+    puts("received signal");
     return;
 }
 
@@ -11,12 +11,12 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
+    puts("running");
+
     pid_t parent_pid = getppid();
 
     int trader_id = atoi(argv[1]);
     int order_id = 0;
-
-    puts("running");
 
     // register signal handler
     sigset_t mask, prev;
@@ -32,16 +32,21 @@ int main(int argc, char ** argv) {
 
     // for the exchange write to each trader (read)
     int fd_read = open(buffer_exchange, O_RDONLY);
-
     // for each trader to write to the exchange (write)
     int fd_write = open(buffer_trader, O_WRONLY);
+
+    if (fd_read == -1 || fd_write == -1) {
+        printf("r_fd=%d w_fd=%d\n", fd_read, fd_write);
+        perror("open fifo failed");
+        exit(4);
+    }
     
     // event loop:
     while (1) {
         sigprocmask(SIG_BLOCK, &mask, &prev); // block
         // wait for sigusr1 to be received
         sigsuspend(&prev);
-
+        
         // wait for exchange update (MARKET message)
         // send order   
         // wait for exchange confirmation (ACCEPTED message)
