@@ -41,8 +41,6 @@ int main(int argc, char ** argv) {
         exit(4);
     }
     
-    kill(parent_pid, SIGUSR1);
-    
     // event loop:
     while (1) {
         sigprocmask(SIG_BLOCK, &mask, &prev); // block

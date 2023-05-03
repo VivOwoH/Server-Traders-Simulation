@@ -67,12 +67,6 @@ int main(int argc, char ** argv) {
     }
 
     puts("parent");
-    
-    // register signal handler
-    sigset_t mask, prev;
-    Signal(SIGUSR1, sigusr1_handler);
-    sigemptyset(&mask); // clears all signals in mask
-    sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
     // exchange send "market open" & sigusr1
     for (int i = 0; i < num_traders; i++) {
@@ -80,10 +74,16 @@ int main(int argc, char ** argv) {
             char msg[] = "MARKET OPEN;";
             write(exchange_pool->fds_set[i], msg, strlen(msg));
             printf("pids[i]%d\n", pids[i]);
-            sigsuspend(&prev);
+            usleep(20000);
             kill(pids[i], SIGUSR1);
         }
     }
+    
+    // register signal handler
+    sigset_t mask;
+    Signal(SIGUSR1, sigusr1_handler);
+    sigemptyset(&mask); // clears all signals in mask
+    sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
     while (1) {
         // wait for fds to become "ready"
