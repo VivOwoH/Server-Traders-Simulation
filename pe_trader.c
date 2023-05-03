@@ -31,10 +31,10 @@ int main(int argc, char ** argv) {
     snprintf(buffer_trader, BUFFLEN, FIFO_TRADER, trader_id);
 
     // for the exchange write to each trader (read)
-    int fd_read = open(buffer_exchange, O_RDONLY | O_NONBLOCK);
+    int fd_read = open(buffer_exchange, O_RDONLY);
 
     // for each trader to write to the exchange (write)
-    int fd_write = open(buffer_trader, O_WRONLY | O_NONBLOCK);
+    int fd_write = open(buffer_trader, O_WRONLY);
     
     // event loop:
     while (1) {
