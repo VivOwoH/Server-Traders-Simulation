@@ -75,7 +75,7 @@ int main(int argc, char ** argv) {
             write(exchange_pool->fds_set[i], msg, strlen(msg));
             printf("pids[i]%d\n", pids[i]);
             usleep(20000);
-            kill(pids[i], SIGUSR1);
+            // kill(pids[i], SIGUSR1);
         }
     }
     
