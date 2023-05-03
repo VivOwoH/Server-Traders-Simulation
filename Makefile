@@ -1,11 +1,38 @@
-CC=gcc
-CFLAGS=-Wall -Werror -Wvla -O0 -std=c11 -g -fsanitize=address,leak
-LDFLAGS=-lm
-BINARIES=pe_exchange pe_trader
+TARGET = pe_exchange
+FILE = products.txt
+TEST_TARGET = autotest.sh
+
+CC = gcc
+CFLAGS     = -Wall -Wuninitialized -Wmaybe-uninitialized -Werror -Wvla -O0 -std=c11 -g -fsanitize=address,leak,undefined
+LDFLAGS    = -lm -fsanitize=address,leak,undefined
+BINARIES   = pe_exchange pe_trader 
+EX_SRC        = pe_exchange.c mysignal.c
+TR_SRC        = pe_trader.c mysignal.c 
+EX_OBJ        = $(EX_SRC:.c=.o)
+TR_OBJ		= $(TR_SRC:.c=.o)
 
 all: $(BINARIES)
 
+pe_exchange: $(EX_OBJ)
+	$(CC) -o $@ $(EX_OBJ) $(LDFLAGS)
+
+pe_trader: $(TR_OBJ)
+	$(CC) -o $@ $(TR_OBJ) $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c $< -o $@ 
+
+run:
+	./$(TARGET) $(FILE) ./trader_a ./trader_b
+
+tests:
+	echo "additional c file for tests":
+
+# compile rule different in tests
+run_tests:
+	./$(TEST_TARGET)
+
 .PHONY: clean
 clean:
-	rm -f $(BINARIES)
+	rm -f $(BINARIES) *.o
 
