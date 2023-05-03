@@ -66,7 +66,7 @@ int main(int argc, char ** argv) {
             }
             sscanf(line, "%s %s %s %d %d", arg0, cmd, product, &qty, &price);
         }
-        printf("%s %s %s %d %d\n", arg0, cmd, product, qty, price);
+        // printf("%s %s %s %d %d\n", arg0, cmd, product, qty, price);
 
         if (qty >= 1000) {// disconnect and shut down if BUY with qty>=1000
             break;
