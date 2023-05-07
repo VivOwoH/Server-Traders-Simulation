@@ -20,11 +20,15 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
     puts("exchange received sigusr1");
     signal_node node = (signal_node) malloc(sizeof(struct linkedList));
     node->pid = info->si_pid;
+    node->trader_id = info->si_value.sival_int;
     node->next = NULL;
-    enqueue(node);
+    enqueue(node); // so that we can process 1 signal at a time
     return;
 }
 
+// ----------------------------------------------------------
+// -------------------------- MAIN --------------------------
+// ----------------------------------------------------------
 int main(int argc, char ** argv) {
     if (argc < 3) {
         printf("usage: ./pe_exchange [product file] [trader 0] [trader 1] ... [trader n]\n");
@@ -62,12 +66,11 @@ int main(int argc, char ** argv) {
             perror("execv"); // If exec success it will never return
             exit(3);
         } 
-        // printf("parent%d\n", getpid());
-        // printf("pids[i]%d\n", pids[i]);
-        usleep(50000);
+
+        usleep(50000); // give some time for trader to connect first
+
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
-            // printf("%d pids[i]%d\n", i, pids[i]);
-            char msg[] = "MARKET OPEN;";
+            char msg[] = MARKET_OPEN_MSG;
             write(exchange_pool->fds_set[i], msg, strlen(msg));
             kill(pids[i], SIGUSR1);
         }
@@ -118,10 +121,57 @@ signal_node enqueue(signal_node node) {
 
 void process_next_signal() {
     if (head_sig != NULL) {
-        // Process the signal here
-        // ...
         puts("next signal is being processed");
+        int id = head_sig->trader_id;
+
+        char line[BUFFLEN];
+        char cmd[ARG_SIZE], product[ARG_SIZE];
+        int order_id = -1;
+        int qty = -1;
+        int price = -1;
+
+        int fd_trader = trader_pool->fds_set[id]; // trader fd
+        
+        if (read(fd_trader, line, sizeof(line)) > 0) {
+            for (int i = 0; i < strlen(line); i++){
+                if (line[i] == ';') {
+                    line[i] = '\0'; // terminate the message
+                    break;
+                } 
+            }
+
+            sscanf(line, "%s", cmd); // read until first space
+            char write_line[BUFFLEN];
+            
+            if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
+                sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
+                    snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                    write(fd_trader, write_line, strlen(write_line));
+            } 
+            else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
+                sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
+                    snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                    write(fd_trader, write_line, strlen(write_line));
+            }  
+            else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
+                sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
+                    snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
+                    write(fd_trader, write_line, strlen(write_line));
+            }
+            else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
+                sscanf(line, CANCL_MSG, &order_id) != EOF) {
+                    snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
+                    write(fd_trader, write_line, strlen(write_line));
+            }
+            else { // invalid command
+                write(fd_trader, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+            }
+            kill(head_sig->pid, SIGUSR1);
+        }
+
+        head_sig = head_sig->next; // remove this node after finished processing
     }
+    puts("no signal in queue");
 }
 
 void parse_products(char* filename) {
@@ -196,6 +246,7 @@ void ini_pipes() {
 }
 
 void free_mem() {
+    // TODO: free pids, traderpool->fd_set, exchangepool->fd_set, all signal nodes
     for (int i = 0; i < product_num; i++) {
         free(product_ls[i]);
     }

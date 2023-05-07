@@ -5,6 +5,9 @@
 #define ARG_SIZE 10
 
 #include "pe_common.h"
+#include "msg_cmd.h"
 #include "mysignal.h"
+
+int event();
 
 #endif

@@ -2,10 +2,13 @@
 #define PE_EXCHANGE_H
 
 #define LOG_PREFIX "[PEX]"
+#define ARG_SIZE 10
 #define BUFFLEN 128
 #define PRODUCT_LEN 17 // PRODUCT: string, alphanumeric, case sensitive,
                        // up to 16 characters (+1 null terminator)
+
 #include "pe_common.h"
+#include "msg_cmd.h"
 #include "mysignal.h"
 
 struct fd_pool {
@@ -21,9 +24,11 @@ extern struct fd_pool * trader_pool;
 
 struct linkedList {
     int pid;
+    int trader_id;
     struct linkedList * next;
 };
 typedef struct linkedList * signal_node;
+
 
 void ini_pipes();
 signal_node enqueue(signal_node node);

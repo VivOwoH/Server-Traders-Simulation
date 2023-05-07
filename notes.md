@@ -10,3 +10,4 @@ exit codes:
 2 - fork
 3 - product num & provided num inconsistent
 4 - make fifo
+5 - invalid message (reach max number of arguments)
