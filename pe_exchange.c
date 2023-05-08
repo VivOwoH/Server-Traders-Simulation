@@ -18,25 +18,7 @@ struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
-    pid_t pid = -1;
-    int status = -1;
-    int trader_id = -1;
 
-    while((pid = waitpid(-1, &status, WNOHANG)) > 0) { // WNOHANG=Non-blocking
-        // get trader_id by pid
-        signal_node curr = head_sig;
-        while (curr != NULL) {
-            if (curr->pid == pid) {
-                trader_id = curr->trader_id;
-                break;
-            }
-            curr = curr->next;
-        }
-        printf("[PEX] Trader %d disconnected\n", trader_id);
-    }
-    puts("[PEX] Trading completed");
-    printf("[PEX] Exchange fees collected: $%d\n", total_ex_fee);
-    return;
 }
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
@@ -122,6 +104,27 @@ int main(int argc, char ** argv) {
         
         process_next_signal();
     }
+
+    pid_t pid = -1;
+    int status = -1;
+    int trader_id = -1;
+
+    // wait for all children process to exit
+    while((pid = waitpid(-1, &status, WNOHANG)) > 0) { // WNOHANG=Non-blocking
+        // get trader_id by pid
+        signal_node curr = head_sig;
+        while (curr != NULL) {
+            if (curr->pid == pid) {
+                puts("reach here");
+                trader_id = curr->trader_id;
+                break;
+            }
+            curr = curr->next;
+        }
+        printf("[PEX] Trader %d disconnected\n", trader_id);
+    }
+    puts("[PEX] Trading completed");
+    printf("[PEX] Exchange fees collected: $%d\n", total_ex_fee);
 
     // disconnect
     for (int i = 0; i < num_traders; i++){
@@ -218,22 +221,21 @@ void parse_products(char* filename) {
     FILE * fp = fopen(filename, "r");
     
     product_num = atoi(fgets(buffer, BUFFLEN, fp));
-    product_ls = malloc(product_num * sizeof(char *));
-    
-    int i = 0;
-    while(fgets(buffer, BUFFLEN, fp)) {
-        if (i + 1 > product_num) {
+    product_ls = malloc(product_num * sizeof(char*));
+
+    for (int i = 0; i < product_num; i++) {
+        if (fgets(buffer, BUFFLEN, fp) == NULL) {
             perror("product num inconsistent");
             exit(3);
         }
         buffer[strlen(buffer)-1] = '\0';
-        product_ls[i] = calloc(PRODUCT_LEN, sizeof(char));
-        strcpy(buffer, product_ls[i]);
-        i++;
+        product_ls[i] = calloc(PRODUCT_LEN+1, sizeof(char)); // (+1 null terminator)
+        strcpy(product_ls[i], buffer);
     }
-
+    
     printf("[PEX] Trading %d products: ", product_num);
     for (int i = 0; i < product_num; i++) {
+        // printf("%s", product_ls[i]);
         if (i == product_num-1)
             printf("%s\n", product_ls[i]);
         else
@@ -289,8 +291,8 @@ void connect_pipes() {
         }
 
         // successfully connected
-        printf("[PEX] Connected to /tmp/pe_exchange_%d", i);
-        printf("[PEX] Connected to /tmp/pe_trader_%d", i);
+        printf("[PEX] Connected to /tmp/pe_exchange_%d\n", i);
+        printf("[PEX] Connected to /tmp/pe_trader_%d\n", i);
         
         if (fd_tr > trader_pool->maxfd)
             trader_pool->maxfd = fd_tr;
@@ -303,7 +305,7 @@ void connect_pipes() {
 
     for (int i = 0; i < num_traders; i++) {
         FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // add created fds to rfds
-        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);            
+        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
     }
     return;
 }

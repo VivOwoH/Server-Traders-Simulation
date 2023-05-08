@@ -4,8 +4,8 @@
 #define LOG_PREFIX "[PEX]"
 #define ARG_SIZE 10
 #define BUFFLEN 128
-#define PRODUCT_LEN 17 // PRODUCT: string, alphanumeric, case sensitive,
-                       // up to 16 characters (+1 null terminator)
+#define PRODUCT_LEN 16 // PRODUCT: string, alphanumeric, case sensitive,
+                       // up to 16 characters
 
 #include "pe_common.h"
 #include "msg_cmd.h"
