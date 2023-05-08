@@ -86,7 +86,7 @@ int main(int argc, char ** argv) {
         // wait for fds to become "ready"
         trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
         exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, NULL);
-
+        
         process_next_signal();
     }
 
@@ -101,7 +101,7 @@ int main(int argc, char ** argv) {
         unlink(fifo_buffer_tr);
     }
 
-    puts("close market"); // TODO: modify this
+    puts("close market");
     free_mem();
     return 0;
 }
@@ -131,7 +131,8 @@ void process_next_signal() {
         int price = -1;
 
         int fd_trader = trader_pool->fds_set[id]; // trader fd
-        
+        printf("trader_id=%d, fd_trader=%d\n", id, fd_trader);
+
         if (read(fd_trader, line, sizeof(line)) > 0) {
             for (int i = 0; i < strlen(line); i++){
                 if (line[i] == ';') {
@@ -146,21 +147,25 @@ void process_next_signal() {
             if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
                 sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
                     snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                    printf("%s\n", write_line);
                     write(fd_trader, write_line, strlen(write_line));
             } 
             else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
                 sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
                     snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                    printf("%s\n", write_line);
                     write(fd_trader, write_line, strlen(write_line));
             }  
             else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
                 sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
                     snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
+                    printf("%s\n", write_line);
                     write(fd_trader, write_line, strlen(write_line));
             }
             else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
                 sscanf(line, CANCL_MSG, &order_id) != EOF) {
                     snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
+                    printf("%s\n", write_line);
                     write(fd_trader, write_line, strlen(write_line));
             }
             else { // invalid command
@@ -170,6 +175,7 @@ void process_next_signal() {
         }
 
         head_sig = head_sig->next; // remove this node after finished processing
+        return;
     }
     puts("no signal in queue");
 }
