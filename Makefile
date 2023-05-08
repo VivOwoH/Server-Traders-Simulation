@@ -34,5 +34,5 @@ run_tests:
 
 .PHONY: clean
 clean:
-	rm -f $(BINARIES) *.o trader_a trader_b trader_c
+	rm -f $(BINARIES) *.o 
 

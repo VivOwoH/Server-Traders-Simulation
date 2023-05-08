@@ -95,15 +95,18 @@ int main(int argc, char ** argv) {
         } 
 
         usleep(50000); // give some time for trader to connect first
+    }
 
+    connect_pipes();
+
+    // -------------------------- MARKET OPEN --------------------------
+    for (int i = 0; i < num_traders; i++) {
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             char msg[] = MARKET_OPEN_MSG;
             write(exchange_pool->fds_set[i], msg, strlen(msg));
             kill(pids[i], SIGUSR1);
         }
     }
-
-    connect_pipes();
 
     // register signal handler
     // sigset_t mask;
