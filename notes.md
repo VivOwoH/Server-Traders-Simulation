@@ -9,5 +9,5 @@ exit codes:
 1 - sigaction
 2 - fork
 3 - product num & provided num inconsistent
-4 - make fifo
+4 - file descriptor errors
 5 - invalid message (reach max number of arguments)

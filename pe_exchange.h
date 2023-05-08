@@ -33,7 +33,8 @@ typedef struct linkedList * signal_node;
 void ini_pipes();
 void connect_pipes();
 signal_node enqueue(signal_node node);
-void process_next_signal();
+int process_next_signal();
+int tear_down();
 void parse_products(char* filename);
 void free_mem();
 

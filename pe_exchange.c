@@ -70,7 +70,7 @@ int main(int argc, char ** argv) {
         else if (pid == 0) { // child process: exec binary
             char buffer[BUFFLEN];
             snprintf(buffer, BUFFLEN,"%d",i);
-            printf("[PEX] Starting trader %d (./bin/%s)", i, argv[i+2]);
+            printf("[PEX] Starting trader %d (%s)\n", i, argv[i+2]);
             execl(argv[i+2], argv[i+2], buffer, (char*) NULL); 
             perror("execv"); // If exec success it will never return
             exit(3);
@@ -99,32 +99,20 @@ int main(int argc, char ** argv) {
 
     while (1) {
         // wait for fds to become "ready"
-        trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
-        exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, NULL);
+        int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
+        int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, NULL);
         
-        process_next_signal();
-    }
-
-    pid_t pid = -1;
-    int status = -1;
-    int trader_id = -1;
-
-    // wait for all children process to exit
-    while((pid = waitpid(-1, &status, WNOHANG)) > 0) { // WNOHANG=Non-blocking
-        // get trader_id by pid
-        signal_node curr = head_sig;
-        while (curr != NULL) {
-            if (curr->pid == pid) {
-                puts("reach here");
-                trader_id = curr->trader_id;
-                break;
-            }
-            curr = curr->next;
+        if (tr_ret == 0 || ex_ret == 0) {
+            perror("Select timed out");
+            exit(4);
+        } else if (tr_ret == -1 || ex_ret == -1) {
+            perror("Select failed");
+            exit(4);
         }
-        printf("[PEX] Trader %d disconnected\n", trader_id);
+
+        if (process_next_signal() == 0)
+            break;
     }
-    puts("[PEX] Trading completed");
-    printf("[PEX] Exchange fees collected: $%d\n", total_ex_fee);
 
     // disconnect
     for (int i = 0; i < num_traders; i++){
@@ -136,7 +124,6 @@ int main(int argc, char ** argv) {
         unlink(fifo_buffer_ex);
         unlink(fifo_buffer_tr);
     }
-
     puts("close market");
     free_mem();
     return 0;
@@ -155,7 +142,7 @@ signal_node enqueue(signal_node node) {
     return head_sig;
 }
 
-void process_next_signal() {
+int process_next_signal() {
     if (head_sig != NULL) {
         puts("next signal is being processed");
         int id = head_sig->trader_id;
@@ -166,54 +153,66 @@ void process_next_signal() {
         int qty = -1;
         int price = -1;
 
-        int fd_trader = trader_pool->fds_set[id]; // trader fd
-        printf("trader_id=%d, fd_trader=%d\n", id, fd_trader);
+        printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
 
-        if (read(fd_trader, line, sizeof(line)) > 0) {
-            for (int i = 0; i < strlen(line); i++){
-                if (line[i] == ';') {
-                    line[i] = '\0'; // terminate the message
-                    break;
-                } 
-            }
+        if (FD_ISSET(trader_pool->fds_set[id], &trader_pool->rfds)) {
+            int fd_trader = trader_pool->fds_set[id];
+            int num_bytes = read(fd_trader, line, sizeof(line));
 
-            sscanf(line, "%s", cmd); // read until first space
-            char write_line[BUFFLEN];
-            
-            if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
-                sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
-                    snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-                    printf("%s\n", write_line);
-                    write(fd_trader, write_line, strlen(write_line));
+            if (num_bytes == -1) {
+                perror("Read failure");
+                exit(4);
             } 
-            else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
-                sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
-                    snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-                    printf("%s\n", write_line);
-                    write(fd_trader, write_line, strlen(write_line));
-            }  
-            else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
-                sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
-                    snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
-                    printf("%s\n", write_line);
-                    write(fd_trader, write_line, strlen(write_line));
-            }
-            else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
-                sscanf(line, CANCL_MSG, &order_id) != EOF) {
-                    snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
-                    printf("%s\n", write_line);
-                    write(fd_trader, write_line, strlen(write_line));
-            }
-            else { // invalid command
-                write(fd_trader, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-            }
-            kill(head_sig->pid, SIGUSR1);
-        }
+            else if (num_bytes == 0) {
+                puts("Read end of pipe closed");
+                return tear_down();
+            } 
+            else {
+                for (int i = 0; i < strlen(line); i++){
+                    if (line[i] == ';') {
+                        line[i] = '\0'; // terminate the message
+                        break;
+                    } 
+                }
 
+                sscanf(line, "%s", cmd); // read until first space
+                char write_line[BUFFLEN];
+                
+                if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
+                    sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
+                        snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                        printf("%s\n", write_line);
+                        write(fd_trader, write_line, strlen(write_line));
+                } 
+                else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
+                    sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
+                        snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                        printf("%s\n", write_line);
+                        write(fd_trader, write_line, strlen(write_line));
+                }  
+                else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
+                    sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
+                        snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
+                        printf("%s\n", write_line);
+                        write(fd_trader, write_line, strlen(write_line));
+                }
+                else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
+                    sscanf(line, CANCL_MSG, &order_id) != EOF) {
+                        snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
+                        printf("%s\n", write_line);
+                        write(fd_trader, write_line, strlen(write_line));
+                }
+                else { // invalid command
+                    write(fd_trader, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+                }
+                kill(head_sig->pid, SIGUSR1);
+            }
+        }
         head_sig = head_sig->next; // remove this node after finished processing
-        return;
+        return 1;
     }
     puts("no signal in queue");
+    return 1;
 }
 
 void parse_products(char* filename) {
@@ -308,6 +307,32 @@ void connect_pipes() {
         FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
     }
     return;
+}
+
+int tear_down() {
+    pid_t pid = -1;
+    int status = -1;
+    int trader_id = -1;
+
+    // wait for all children process to exit
+    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        // get trader_id by pid
+        signal_node curr = head_sig;
+        while (curr != NULL) {
+            if (curr->pid == pid) {
+                puts("reach here");
+                trader_id = curr->trader_id;
+                break;
+            }
+            curr = curr->next;
+        }
+        printf("[PEX] Trader %d disconnected\n", trader_id);
+    }
+
+    puts("[PEX] Trading completed");
+    printf("[PEX] Exchange fees collected: $%d\n", total_ex_fee);
+
+    return 0;
 }
 
 void free_mem() {
