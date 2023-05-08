@@ -9,12 +9,35 @@
 int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
+int total_ex_fee = 0;
 signal_node head_sig = NULL;
 pid_t * pids;
 struct fd_pool ex_fds;
 struct fd_pool tr_fds;
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
+
+void sigchld_handler(int s, siginfo_t *info, void *context) {
+    pid_t pid = -1;
+    int status = -1;
+    int trader_id = -1;
+
+    while((pid = waitpid(-1, &status, WNOHANG)) > 0) { // WNOHANG=Non-blocking
+        // get trader_id by pid
+        signal_node curr = head_sig;
+        while (curr != NULL) {
+            if (curr->pid == pid) {
+                trader_id = curr->trader_id;
+                break;
+            }
+            curr = curr->next;
+        }
+        printf("[PEX] Trader %d disconnected\n", trader_id);
+    }
+    puts("[PEX] Trading completed");
+    printf("[PEX] Exchange fees collected: $%d\n", total_ex_fee);
+    return;
+}
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
     puts("exchange received sigusr1");
@@ -29,11 +52,14 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
 // ----------------------------------------------------------
 // -------------------------- MAIN --------------------------
 // ----------------------------------------------------------
+
 int main(int argc, char ** argv) {
     if (argc < 3) {
         printf("usage: ./pe_exchange [product file] [trader 0] [trader 1] ... [trader n]\n");
         return 1;
     }
+
+    puts("[PEX] Starting");
 
     // e.g. ./pe_exchange products.txt ./trader_a ./trader_b
     parse_products(argv[1]);
@@ -62,6 +88,7 @@ int main(int argc, char ** argv) {
         else if (pid == 0) { // child process: exec binary
             char buffer[BUFFLEN];
             snprintf(buffer, BUFFLEN,"%d",i);
+            printf("[PEX] Starting trader %d (./bin/%s)", i, argv[i+2]);
             execl(argv[i+2], argv[i+2], buffer, (char*) NULL); 
             perror("execv"); // If exec success it will never return
             exit(3);
@@ -75,12 +102,15 @@ int main(int argc, char ** argv) {
             kill(pids[i], SIGUSR1);
         }
     }
-    
+
+    connect_pipes();
+
     // register signal handler
-    sigset_t mask;
+    // sigset_t mask;
     Signal(SIGUSR1, sigusr1_handler);
-    sigemptyset(&mask); // clears all signals in mask
-    sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
+    Signal(SIGCHLD, sigchld_handler);
+    // sigemptyset(&mask); // clears all signals in mask
+    // sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
     while (1) {
         // wait for fds to become "ready"
@@ -199,6 +229,14 @@ void parse_products(char* filename) {
         i++;
     }
 
+    printf("[PEX] Trading %d products: ", product_num);
+    for (int i = 0; i < product_num; i++) {
+        if (i == product_num-1)
+            printf("%s\n", product_ls[i]);
+        else
+            printf("%s ", product_ls[i]);
+    }
+
     fclose(fp);
 }
 
@@ -222,6 +260,19 @@ void ini_pipes() {
             exit(4);
         }
 
+        // successfully created 2 fifos
+        printf("[PEX] Created FIFO /tmp/pe_exchange_%d\n", i);
+        printf("[PEX] Created FIFO /tmp/pe_trader_%d\n", i);
+    }
+    return;
+}
+
+void connect_pipes() {
+    for (int i = 0; i < num_traders; i++) {
+        char fifo_buffer_ex[BUFFLEN], fifo_buffer_tr[BUFFLEN];
+        snprintf(fifo_buffer_ex, BUFFLEN, FIFO_EXCHANGE, i); // i = assigned trader id (from 0)  
+        snprintf(fifo_buffer_tr, BUFFLEN, FIFO_TRADER, i);  
+
         // exchange write to fifo_ex; read from fifo_tr
         int fd_tr = open(fifo_buffer_tr, O_RDONLY | O_NONBLOCK);
         trader_pool->fds_set[i] = fd_tr;
@@ -233,6 +284,10 @@ void ini_pipes() {
             perror("open fifo failed");
             exit(4);
         }
+
+        // successfully connected
+        printf("[PEX] Connected to /tmp/pe_exchange_%d", i);
+        printf("[PEX] Connected to /tmp/pe_trader_%d", i);
         
         if (fd_tr > trader_pool->maxfd)
             trader_pool->maxfd = fd_tr;
@@ -244,10 +299,9 @@ void ini_pipes() {
     }
 
     for (int i = 0; i < num_traders; i++) {
-        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds); // add created fds to rfds
-        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds);
+        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // add created fds to rfds
+        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);            
     }
-
     return;
 }
 
