@@ -99,8 +99,12 @@ int main(int argc, char ** argv) {
 
     while (1) {
         // wait for fds to become "ready"
-        int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
-        int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, NULL);
+        int tr_ret = -1;
+        int ex_ret = -1;
+        while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
+            tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
+            ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, NULL);
+        }
         
         if (tr_ret == 0 || ex_ret == 0) {
             perror("Select timed out");
