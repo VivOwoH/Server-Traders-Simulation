@@ -143,14 +143,13 @@ int main(int argc, char ** argv) {
                 perror("Select failed");
                 exit(4);
             } else {
-                for (int i = 0; i < trader_pool->maxfd; i++) {
+                for (int i = 0; i < num_traders; i++) {
                     if (FD_ISSET(trader_pool->fds_set[i], &trader_pool->rfds) 
                             && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
                         rw_trader(i, trader_pool->fds_set[i], exchange_pool->fds_set[i]);
                     }
                 }
             } 
-   
             sigusr1_received = 0;
             sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
         }
