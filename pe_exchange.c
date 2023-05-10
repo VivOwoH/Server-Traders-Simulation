@@ -16,26 +16,39 @@ struct fd_pool ex_fds;
 struct fd_pool tr_fds;
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
-int sigchld_received = 0;
+int all_children_terminated = 0;
+// int sigchld_received = 0;
+int sigusr1_received = 0;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
-    sigchld_received = 1;
+    // sigchld_received = 1;
 }
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
     puts("exchange received sigusr1");
-    signal_node node = (signal_node) malloc(sizeof(struct linkedList));
-    node->pid = info->si_pid;
-    node->trader_id = info->si_value.sival_int;
-    node->next = NULL;
-    printf("trader_id:%d\n", enqueue(node)->trader_id);
+    sigusr1_received = 1;
+    // signal_node node = (signal_node) malloc(sizeof(struct linkedList));
+    // node->pid = info->si_pid;
+    // node->trader_id = info->si_value.sival_int;
+    // node->next = NULL;
+    // printf("trader_id:%d\n", enqueue(node)->trader_id);
     return;
 }
 
 void reset_fds() {
+    FD_ZERO(&trader_pool->rfds); // clear all
+    FD_ZERO(&exchange_pool->rfds);
+
     for (int i = 0; i < num_traders; i++) {
-        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // reset
+        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // add fds to rfds
         FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
+        
+        if (trader_pool->fds_set[i] > trader_pool->maxfd)
+            trader_pool->maxfd = trader_pool->fds_set[i];
+        if (exchange_pool->fds_set[i] > exchange_pool->maxfd)
+            exchange_pool->maxfd = exchange_pool->fds_set[i];  
+        // printf("%d %d\n", exchange_pool->fds_set[i], trader_pool->fds_set[i]);
+        // printf("%d %d\n", exchange_pool->maxfd, trader_pool->maxfd);
     }
 }
 
@@ -100,60 +113,75 @@ int main(int argc, char ** argv) {
             exit(4);
         }
     }
-
+    
     // register signal handler
-    Signal(SIGUSR1, sigusr1_handler);
-    Signal(SIGCHLD, sigchld_handler); 
+    sigset_t mask;
 
-    while (!sigchld_received) {
-        struct timeval timeout;
-        // Set the timeout value to 5 seconds
-        timeout.tv_sec = 5;
-        timeout.tv_usec = 0;
-        
-        // wait for any fds to become "ready"
-        int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
-        int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
-        
-        if (tr_ret == 0 || ex_ret == 0) {
-            perror("Select timed out");
-            exit(4);
-        } else if ((tr_ret == -1 || ex_ret == -1)) {
-            if (errno == EINTR) ; // caught and handled
-            else {
+    Signal(SIGUSR1, sigusr1_handler);
+    // Signal(SIGCHLD, sigchld_handler); 
+
+    sigemptyset(&mask); // clears all signals in mask
+    sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
+
+    while (!all_children_terminated) {
+        if (sigusr1_received) {
+            sigprocmask(SIG_BLOCK, &mask, NULL); // block
+            
+            struct timeval timeout;
+            // Set the timeout value to 5 seconds
+            timeout.tv_sec = 5;
+            timeout.tv_usec = 0;
+            
+            // wait for any fds to become ready
+            int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
+            int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
+            
+            if (tr_num == 0 || ex_num == 0) {
+                perror("Select timed out");
+                exit(4);
+            } else if ((tr_num == -1 || ex_num == -1)) {
                 perror("Select failed");
                 exit(4);
+            } else {
+                for (int i = 0; i < trader_pool->maxfd; i++) {
+                    if (FD_ISSET(trader_pool->fds_set[i], &trader_pool->rfds) 
+                            && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
+                        rw_trader(i, trader_pool->fds_set[i], exchange_pool->fds_set[i]);
+                    }
+                }
+            } 
+   
+            sigusr1_received = 0;
+            sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
+        }
+
+        pid_t pid = 0;
+        int status = -1;
+        int trader_id = -1;
+        
+        // wait for all children process to exit
+        while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+            for (int i = 0; i < num_traders; i++) {
+                if (pids[i] == pid) {
+                    trader_id = i;
+                    FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
+                    FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
+                    break;
+                }
+            }
+            printf("[PEX] Trader %d disconnected\n", trader_id);
+        }
+
+        if (pid == -1) {
+            if (errno == ECHILD) {
+                all_children_terminated = 1;
+            }
+            else {
+                perror("waitpid error");
+                exit(6);
             }
         }
-
-        process_all_signals();
-        match_order();
-
-        reset_fds();
     }
-
-    pid_t pid = -1;
-    int status = -1;
-    int trader_id = -1;
-    
-    // wait for all children process to exit
-    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        for (int i = 0; i < num_traders; i++) {
-            if (pids[i] == pid) {
-                trader_id = i;
-                break;
-            }
-        }
-        printf("[PEX] Trader %d disconnected\n", trader_id);
-    }
-
-    if (pid == -1) {
-        if (errno == ECHILD) ;
-        else {
-            perror("waitpid error");
-            exit(6);
-        }
-    } 
 
     // disconnect
     for (int i = 0; i < num_traders; i++){
@@ -186,81 +214,69 @@ signal_node enqueue(signal_node node) {
         }
         tmp->next = node; 
     }
-    return head_sig;
+    return node;
 }
 
-int process_all_signals() {
-    while (head_sig != NULL) {
-        int id = head_sig->trader_id;
+int rw_trader(int id, int fd_trader, int fd_exchange) {
+    char line[BUFFLEN];
+    char cmd[ARG_SIZE], product[ARG_SIZE];
+    int order_id = -1;
+    int qty = -1;
+    int price = -1;
 
-        char line[BUFFLEN];
-        char cmd[ARG_SIZE], product[ARG_SIZE];
-        int order_id = -1;
-        int qty = -1;
-        int price = -1;
+    // printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
 
-        // printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
+    // check the read descriptor is ready
+    int num_bytes = read(fd_trader, line, sizeof(line));
 
-        // check the read descriptor is ready
-        int fd_trader = trader_pool->fds_set[id];
-        int fd_exchange = exchange_pool->fds_set[id];
-        if (FD_ISSET(fd_trader, &trader_pool->rfds) && FD_ISSET(fd_exchange, &exchange_pool->rfds)) {
-            int num_bytes = read(fd_trader, line, sizeof(line));
-
-            if (num_bytes == -1) {
-                perror("Read failure");
-                exit(4);
+    if (num_bytes == -1) {
+        perror("Read failure");
+        exit(4);
+    } 
+    else if (num_bytes == 0) {
+        puts("Read end of pipe closed");
+        return 1;
+    } 
+    else {
+        for (int i = 0; i < strlen(line); i++){
+            if (line[i] == ';') {
+                line[i] = '\0'; // terminate the message
+                break;
             } 
-            else if (num_bytes == 0) {
-                puts("Read end of pipe closed");
-                return 1;
-            } 
-            else {
-                for (int i = 0; i < strlen(line); i++){
-                    if (line[i] == ';') {
-                        line[i] = '\0'; // terminate the message
-                        break;
-                    } 
-                }
-                printf("[PEX] [T%d] Parsing command: <%s>\n", id, line);
-
-                sscanf(line, "%s", cmd); // read until first space
-                char write_line[BUFFLEN];
-                
-                if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
-                    sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
-                        snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-                        printf("%s\n", write_line);
-                        write(fd_exchange, write_line, strlen(write_line));
-                } 
-                else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
-                    sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
-                        snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-                        printf("%s\n", write_line);
-                        write(fd_exchange, write_line, strlen(write_line));
-                }  
-                else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
-                    sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
-                        snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
-                        printf("%s\n", write_line);
-                        write(fd_exchange, write_line, strlen(write_line));
-                }
-                else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
-                    sscanf(line, CANCL_MSG, &order_id) != EOF) {
-                        snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
-                        printf("%s\n", write_line);
-                        write(fd_exchange, write_line, strlen(write_line));
-                }
-                else { // invalid command
-                    write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-                }
-                kill(head_sig->pid, SIGUSR1);
-            }
-        } else {
-            perror("signal: file descriptor not ready");
-            exit(4);
         }
-        head_sig = head_sig->next; // remove this node after finished processing
+        printf("[PEX] [T%d] Parsing command: <%s>\n", id, line);
+
+        sscanf(line, "%s", cmd); // read until first space
+        char write_line[BUFFLEN];
+        
+        if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
+            sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
+                snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                printf("%s\n", write_line);
+                write(fd_exchange, write_line, strlen(write_line));
+        } 
+        else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
+            sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
+                snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                printf("%s\n", write_line);
+                write(fd_exchange, write_line, strlen(write_line));
+        }  
+        else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
+            sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
+                snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
+                printf("%s\n", write_line);
+                write(fd_exchange, write_line, strlen(write_line));
+        }
+        else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
+            sscanf(line, CANCL_MSG, &order_id) != EOF) {
+                snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
+                printf("%s\n", write_line);
+                write(fd_exchange, write_line, strlen(write_line));
+        }
+        else { // invalid command
+            write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+        }
+        kill(pids[id], SIGUSR1);
     }
     return 0;
 }
@@ -341,22 +357,14 @@ void connect_pipes(int i) {
         exit(4);
     }
 
-    // successfully connected
     printf("[PEX] Connected to /tmp/pe_exchange_%d\n", i);
     printf("[PEX] Connected to /tmp/pe_trader_%d\n", i);
-    
-    if (fd_tr > trader_pool->maxfd)
-        trader_pool->maxfd = fd_tr;
-    if (fd_ex > exchange_pool->maxfd)
-        exchange_pool->maxfd = fd_ex;
-    
-    FD_ZERO(&trader_pool->rfds); // clear all
-    FD_ZERO(&exchange_pool->rfds);
 
-    FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // add created fds to rfds
-    FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
-    // printf("%d %d\n", exchange_pool->fds_set[i], trader_pool->fds_set[i]);
-    // printf("%d %d\n", exchange_pool->maxfd, trader_pool->maxfd);
+    // if (fd_tr > trader_pool->maxfd)
+    //     trader_pool->maxfd = fd_tr;
+    // if (fd_ex > exchange_pool->maxfd)
+    //     exchange_pool->maxfd = fd_ex;
+    
     return;
 }
 
@@ -366,4 +374,14 @@ void free_mem() {
         free(product_ls[i]);
     }
     free(product_ls);
+    free(pids);
+    free(trader_pool->fds_set);
+    free(exchange_pool->fds_set);
+
+    signal_node tmp = NULL;
+    while (head_sig != NULL) {
+       tmp = head_sig;
+       head_sig = head_sig->next;
+       free(tmp);
+    }
 }

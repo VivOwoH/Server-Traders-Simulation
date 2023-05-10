@@ -14,7 +14,6 @@
 struct fd_pool {
     int maxfd;        // largest fd in all ready descriptors (*|all fds|=maxfd+1)
     fd_set rfds;      // all ready fds
-    int num_rfds;     // number of ready fds from select
     int * fds_set; // malloc this when we know num of traders
                       // IMPORTANT: select can only handle < 1024 fds; enough for the purpose of this assignment
 };
@@ -33,7 +32,7 @@ typedef struct linkedList * signal_node;
 void ini_pipes(int);
 void connect_pipes(int);
 signal_node enqueue(signal_node node);
-int process_all_signals();
+int rw_trader(int, int, int);
 void match_order();
 void parse_products(char* filename);
 void free_mem();
