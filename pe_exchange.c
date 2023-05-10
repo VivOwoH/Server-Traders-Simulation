@@ -16,9 +16,12 @@ struct fd_pool ex_fds;
 struct fd_pool tr_fds;
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
+int sigchld_received = 0;
+int sigusr1_received = 0;
 int all_children_terminated = 0;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
+    sigusr1_received = 1;
     pid_t pid = -1;
     int status = -1;
     int trader_id = -1;
@@ -47,6 +50,7 @@ void sigchld_handler(int s, siginfo_t *info, void *context) {
 }
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
+    sigusr1_received = 1;
     puts("exchange received sigusr1");
     signal_node node = (signal_node) malloc(sizeof(struct linkedList));
     node->pid = info->si_pid;
@@ -124,50 +128,47 @@ int main(int argc, char ** argv) {
             exit(4);
         }
     }
-    
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGUSR1); // block sigusr1
 
     // register signal handler
     Signal(SIGUSR1, sigusr1_handler);
     Signal(SIGCHLD, sigchld_handler); 
 
     while (!all_children_terminated) {
-        int process_flag = 1;
         
-        if (process_flag) {
-            sigprocmask(SIG_BLOCK, &mask, NULL); // block sigusr1
-        
+        if (!sigchld_received) { 
             struct timeval timeout;
-            // Set the timeout value to 3 seconds
-            timeout.tv_sec = 3;
+            // Set the timeout value to 5 seconds
+            timeout.tv_sec = 5;
             timeout.tv_usec = 0;
             
             // wait for any fds to become "ready"
             int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
             int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
             
-            sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock sigusr1
-            
             // select can be interrupted by sigchld
-            if ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
+            while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
                 puts("Select interrupted by signal");
-                process_flag = 0;
-                break;
-            } else if (tr_ret == 0 || ex_ret == 0) {
+                if (sigchld_received == 1)
+                    break;
+                else if (sigusr1_received == 1) {
+                    tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
+                    ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
+                    sigusr1_received = 0;
+                }
+            } 
+            if (tr_ret == 0 || ex_ret == 0) {
                 perror("Select timed out");
                 exit(4);
             } else if ((tr_ret == -1 || ex_ret == -1) && errno != EINTR) {
                 perror("Select failed");
                 exit(4);
             }
-
-            process_all_signals();
-            match_order();
-
-            reset_fds();
         }
+
+        process_all_signals();
+        match_order();
+
+        reset_fds();
     }
 
     // disconnect
