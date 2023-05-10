@@ -58,7 +58,7 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
-    printf("%s Starting", LOG_PREFIX);
+    printf("%s Starting\n", LOG_PREFIX);
 
     // e.g. ./pe_exchange products.txt ./trader_a ./trader_b
     parse_products(argv[1]);
@@ -192,7 +192,7 @@ int main(int argc, char ** argv) {
     // free all malloced memory
     free_mem();
 
-    printf("%s Trading completed", LOG_PREFIX);
+    printf("%s Trading completed\n", LOG_PREFIX);
     printf("%s Exchange fees collected: $%d\n", LOG_PREFIX, total_ex_fee);
     
     return 0;
