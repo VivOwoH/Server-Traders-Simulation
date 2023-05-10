@@ -191,7 +191,6 @@ signal_node enqueue(signal_node node) {
 
 int process_all_signals() {
     while (head_sig != NULL) {
-        puts("next signal is being processed");
         int id = head_sig->trader_id;
 
         char line[BUFFLEN];
@@ -200,11 +199,12 @@ int process_all_signals() {
         int qty = -1;
         int price = -1;
 
-        printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
+        // printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
 
         // check the read descriptor is ready
-        if (FD_ISSET(trader_pool->fds_set[id], &trader_pool->rfds)) {
-            int fd_trader = trader_pool->fds_set[id];
+        int fd_trader = trader_pool->fds_set[id];
+        int fd_exchange = exchange_pool->fds_set[id];
+        if (FD_ISSET(fd_trader, &trader_pool->rfds) && FD_ISSET(fd_exchange, &exchange_pool->rfds)) {
             int num_bytes = read(fd_trader, line, sizeof(line));
 
             if (num_bytes == -1) {
@@ -231,28 +231,28 @@ int process_all_signals() {
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
                         snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
                         printf("%s\n", write_line);
-                        write(fd_trader, write_line, strlen(write_line));
+                        write(fd_exchange, write_line, strlen(write_line));
                 } 
                 else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
                         snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
                         printf("%s\n", write_line);
-                        write(fd_trader, write_line, strlen(write_line));
+                        write(fd_exchange, write_line, strlen(write_line));
                 }  
                 else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
                         snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
                         printf("%s\n", write_line);
-                        write(fd_trader, write_line, strlen(write_line));
+                        write(fd_exchange, write_line, strlen(write_line));
                 }
                 else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
                     sscanf(line, CANCL_MSG, &order_id) != EOF) {
                         snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
                         printf("%s\n", write_line);
-                        write(fd_trader, write_line, strlen(write_line));
+                        write(fd_exchange, write_line, strlen(write_line));
                 }
                 else { // invalid command
-                    write(fd_trader, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+                    write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
                 }
                 kill(head_sig->pid, SIGUSR1);
             }
@@ -262,7 +262,6 @@ int process_all_signals() {
         }
         head_sig = head_sig->next; // remove this node after finished processing
     }
-    puts("no signal in queue");
     return 0;
 }
 
