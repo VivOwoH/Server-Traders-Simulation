@@ -76,41 +76,58 @@ int main(int argc, char ** argv) {
             perror("execv"); // If exec success it will never return
             exit(3);
         }
-        usleep(20000); // give some time for trader to connect and suspend
+        usleep(50000); // give some time for trader to connect and suspend
         connect_pipes(i);
     }
 
     // -------------------------- MARKET OPEN --------------------------
     for (int i = 0; i < num_traders; i++) {
+        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // reset
+        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
+        
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             char msg[] = MARKET_OPEN_MSG;
             write(exchange_pool->fds_set[i], msg, strlen(msg));
             kill(pids[i], SIGUSR1);
+        } else {
+            perror("file descriptor not ready");
+            exit(4);
         }
     }
 
     // register signal handler
-    // sigset_t mask;
+        // register signal handler
+    sigset_t mask, prev;
+
     Signal(SIGUSR1, sigusr1_handler);
     Signal(SIGCHLD, sigchld_handler);
-    // sigemptyset(&mask); // clears all signals in mask
-    // sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
-    int tr_ret = -1;
-    int ex_ret = -1;
+    sigemptyset(&mask); // clears all signals in mask
+    sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
+
+    
     while (1) {
-        // wait for fds to become "ready"
-        while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
-            tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
-            ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, NULL);
+        sigprocmask(SIG_BLOCK, &mask, &prev); // block
+        // wait for sigusr1 to be received
+        sigsuspend(&prev);
 
-            if (tr_ret == 0 || ex_ret == 0) {
-                perror("Select timed out");
-                exit(4);
-            } else if ((tr_ret == -1 || ex_ret == -1) && errno != EINTR) {
-                perror("Select failed");
-                exit(4);
-            }
+        struct timeval timeout;
+        // Set the timeout value to 3 seconds
+        timeout.tv_sec = 3;
+
+        // wait for fds to become "ready"
+        int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
+        int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
+        // while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
+        //     tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
+        //     ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
+        // }
+        if (tr_ret == 0 || ex_ret == 0) {
+            perror("Select timed out");
+            exit(4);
+        } else if ((tr_ret == -1 || ex_ret == -1)) {
+            perror("Select failed");
+            exit(4);
         }
 
         if (process_next_signal() == 0)
@@ -304,6 +321,8 @@ void connect_pipes(int i) {
 
     FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // add created fds to rfds
     FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
+    // printf("%d %d\n", exchange_pool->fds_set[i], trader_pool->fds_set[i]);
+    // printf("%d %d\n", exchange_pool->maxfd, trader_pool->maxfd);
     return;
 }
 
