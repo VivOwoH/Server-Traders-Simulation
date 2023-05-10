@@ -16,9 +16,32 @@ struct fd_pool ex_fds;
 struct fd_pool tr_fds;
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
+int all_children_terminated = 0;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
     puts("child terminated");
+    pid_t pid = -1;
+    int status = -1;
+    int trader_id = -1;
+
+    // wait for all children process to exit
+    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        for (int i = 0; i < num_traders; i++) {
+            if (pids[i] == pid) {
+                trader_id = i;
+                break;
+            }
+        }
+        printf("[PEX] Trader %d disconnected\n", trader_id);
+    }
+
+    if (pid == -1) {
+        perror("waitpid error");
+        exit(6);
+    } 
+    else if (pids == 0) {
+        all_children_terminated = 1;
+    }
 }
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
@@ -96,32 +119,23 @@ int main(int argc, char ** argv) {
     }
 
     // register signal handler
-        // register signal handler
-    sigset_t mask, prev;
-
     Signal(SIGUSR1, sigusr1_handler);
-    Signal(SIGCHLD, sigchld_handler);
+    Signal(SIGCHLD, sigchld_handler); 
 
-    sigemptyset(&mask); // clears all signals in mask
-    sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
-
-    
-    while (1) {
-        sigprocmask(SIG_BLOCK, &mask, &prev); // block
-        // wait for sigusr1 to be received
-        sigsuspend(&prev);
-
+    while (!all_children_terminated) {
         struct timeval timeout;
         // Set the timeout value to 3 seconds
         timeout.tv_sec = 3;
 
-        // wait for fds to become "ready"
+        // wait for any fds to become "ready"
         int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
         int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
-        // while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
-        //     tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
-        //     ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
-        // }
+        // select can be interrupted by sigchld
+        while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
+            puts("Select interrupted by signal");
+            tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
+            ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
+        }
         if (tr_ret == 0 || ex_ret == 0) {
             perror("Select timed out");
             exit(4);
@@ -130,8 +144,7 @@ int main(int argc, char ** argv) {
             exit(4);
         }
 
-        if (process_next_signal() == 0)
-            break;
+        process_next_signal();
     }
 
     // disconnect
@@ -144,10 +157,16 @@ int main(int argc, char ** argv) {
         unlink(fifo_buffer_ex);
         unlink(fifo_buffer_tr);
     }
-    puts("close market");
+    
+    // free all malloced memory
     free_mem();
+
+    puts("[PEX] Trading completed");
+    printf("[PEX] Exchange fees collected: $%d\n", total_ex_fee);
+    
     return 0;
 }
+
 
 signal_node enqueue(signal_node node) {
     if (head_sig == NULL) {
@@ -175,6 +194,7 @@ int process_next_signal() {
 
         printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
 
+        // check the read descriptor is ready
         if (FD_ISSET(trader_pool->fds_set[id], &trader_pool->rfds)) {
             int fd_trader = trader_pool->fds_set[id];
             int num_bytes = read(fd_trader, line, sizeof(line));
@@ -185,7 +205,7 @@ int process_next_signal() {
             } 
             else if (num_bytes == 0) {
                 puts("Read end of pipe closed");
-                return tear_down();
+                return 1;
             } 
             else {
                 for (int i = 0; i < strlen(line); i++){
@@ -227,12 +247,15 @@ int process_next_signal() {
                 }
                 kill(head_sig->pid, SIGUSR1);
             }
+        } else {
+            perror("signal: file descriptor not ready");
+            exit(4);
         }
         head_sig = head_sig->next; // remove this node after finished processing
         return 1;
     }
     puts("no signal in queue");
-    return 1;
+    return 0;
 }
 
 void parse_products(char* filename) {
@@ -324,32 +347,6 @@ void connect_pipes(int i) {
     // printf("%d %d\n", exchange_pool->fds_set[i], trader_pool->fds_set[i]);
     // printf("%d %d\n", exchange_pool->maxfd, trader_pool->maxfd);
     return;
-}
-
-int tear_down() {
-    pid_t pid = -1;
-    int status = -1;
-    int trader_id = -1;
-
-    // wait for all children process to exit
-    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        // get trader_id by pid
-        signal_node curr = head_sig;
-        while (curr != NULL) {
-            if (curr->pid == pid) {
-                puts("reach here");
-                trader_id = curr->trader_id;
-                break;
-            }
-            curr = curr->next;
-        }
-        printf("[PEX] Trader %d disconnected\n", trader_id);
-    }
-
-    puts("[PEX] Trading completed");
-    printf("[PEX] Exchange fees collected: $%d\n", total_ex_fee);
-
-    return 0;
 }
 
 void free_mem() {

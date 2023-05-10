@@ -11,3 +11,4 @@ exit codes:
 3 - product num & provided num inconsistent
 4 - file descriptor errors
 5 - invalid message (reach max number of arguments)
+6 - sigchld error

@@ -34,7 +34,6 @@ void ini_pipes(int);
 void connect_pipes(int);
 signal_node enqueue(signal_node node);
 int process_next_signal();
-int tear_down();
 void parse_products(char* filename);
 void free_mem();
 
