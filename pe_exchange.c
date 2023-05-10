@@ -120,17 +120,16 @@ int main(int argc, char ** argv) {
         }
     }
     
-    // sigset_t mask;
-    // sigemptyset(&mask);
-    // sigaddset(&mask, SIGUSR1);
-    // sigaddset(&mask, SIGCHLD);
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGUSR1);
 
     // register signal handler
     Signal(SIGUSR1, sigusr1_handler);
     Signal(SIGCHLD, sigchld_handler); 
 
     while (!all_children_terminated) {
-        // sigprocmask(SIG_BLOCK, &mask, NULL);
+        sigprocmask(SIG_BLOCK, &mask, NULL);
 
         struct timeval timeout;
         // Set the timeout value to 3 seconds
@@ -142,20 +141,20 @@ int main(int argc, char ** argv) {
         // select can be interrupted
         while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
             puts("Select interrupted by signal");
-            tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
-            ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
+            break;
         }
         if (tr_ret == 0 || ex_ret == 0) {
             perror("Select timed out");
             exit(4);
-        } else if ((tr_ret == -1 || ex_ret == -1)) {
+        } else if ((tr_ret == -1 || ex_ret == -1) && errno != EINTR) {
             perror("Select failed");
             exit(4);
         }
 
-        // sigprocmask(SIG_UNBLOCK, &mask, NULL);
+        sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
         process_next_signal();
+        match_order();
     }
 
     // disconnect
@@ -185,9 +184,9 @@ signal_node enqueue(signal_node node) {
     } else {
         signal_node tmp = head_sig; 
         while(tmp->next != NULL){
-            tmp = tmp->next;//traverse the list until p is the last node.The last node always points to NULL.
+            tmp = tmp->next; 
         }
-        tmp->next = node;//Point the previous last node to the new node created.
+        tmp->next = node; 
     }
     return head_sig;
 }
@@ -267,6 +266,10 @@ int process_next_signal() {
     }
     puts("no signal in queue");
     return 0;
+}
+
+void match_order() {
+    return;
 }
 
 void parse_products(char* filename) {
