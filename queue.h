@@ -3,8 +3,8 @@
 
 #include "pe_common.h"
 
-#define BUY_ORDER 0;
-#define SELL_ORDER 1;
+#define BUY_ORDER 0
+#define SELL_ORDER 1
 
 typedef void handler_t(int, siginfo_t *, void *);
 handler_t *Signal(int signum, handler_t *handler); // [1] signal to catch;
@@ -36,6 +36,7 @@ struct linkedList
 typedef struct linkedList *order_node;
 extern order_node head_order;
 
+order_node create_order(int type, int pid, int trader_id, char *product);
 void add_order(order_node node);
 void remove_order(int trader_id, int order_id);
 

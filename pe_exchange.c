@@ -24,8 +24,7 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
     puts("exchange received sigusr1");
     sigusr1_received = 1;
 
-    signal_node node = (signal_node) malloc(sizeof(struct linkedList));
-    // node->pid = info->si_pid;
+    signal_node node = (signal_node) malloc(sizeof(struct queue));
     node->trader_id = info->si_value.sival_int;
     node->next = NULL;
     enqueue(node);
@@ -141,14 +140,13 @@ int main(int argc, char ** argv) {
                 perror("Select failed");
                 exit(4);
             } else {
-                signal_node curr = head_sig;
-                while (curr != NULL) {
-                    if (FD_ISSET(trader_pool->fds_set[curr->trader_id], &trader_pool->rfds) 
-                            && FD_ISSET(exchange_pool->fds_set[curr->trader_id], &exchange_pool->rfds)) {
-                        rw_trader(curr->trader_id, trader_pool->fds_set[curr->trader_id], 
-                                    exchange_pool->fds_set[curr->trader_id]);
+                while (head_sig != NULL) {
+                    if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
+                            && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
+                        rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
+                                    exchange_pool->fds_set[head_sig->trader_id]);
                     }
-                    curr = curr->next;
+                    dequeue();
                 }
                 // for (int i = 0; i < num_traders; i++) {
                 //     if (FD_ISSET(trader_pool->fds_set[i], &trader_pool->rfds) 
@@ -245,12 +243,14 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
                 printf("%s\n", write_line);
+                add_order(create_order(BUY_ORDER, pids[id], id, product));
                 write(fd_exchange, write_line, strlen(write_line));
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
             sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
                 printf("%s\n", write_line);
+                add_order(create_order(SELL_ORDER, pids[id], id, product));
                 write(fd_exchange, write_line, strlen(write_line));
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&

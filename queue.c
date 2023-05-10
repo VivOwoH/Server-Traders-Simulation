@@ -44,16 +44,44 @@ void dequeue() {
     free(tmp);
 }
 
+order_node create_order(int type, int pid, int trader_id, char *product) {
+    order_node node = (order_node) malloc(sizeof(struct linkedList));
+    node->order_type = type;
+    node->pid = pid;
+    node->trader_id = trader_id;
+    node->product = product;
+    node->prev = NULL;
+    node->next = NULL;
+    return node;
+}
+
 // sorted by price-time priority
 void add_order(order_node node) {
     if (head_order == NULL) {
         head_order = node;
-    } else {
+    } 
+    else {
         order_node tmp = head_order; 
-        while(tmp->next != NULL){
-            tmp = tmp->next; 
+        while(tmp->next != NULL) {
+            if (node->price > tmp->price) {
+                node->next = tmp;
+                node->prev = tmp->prev;
+                tmp->prev = node;
+                tmp->next = NULL;
+                return;
+            }
+            tmp = tmp->next;
         }
-        tmp->next = node; 
+
+        if (node->price > tmp->price) {
+            node->next = tmp;
+            node->prev = tmp->prev;
+            tmp->prev = node;
+            tmp->next = NULL;
+        } else {
+            tmp->next = node;
+            node->prev = tmp;
+        }
     }
     return;
 }
