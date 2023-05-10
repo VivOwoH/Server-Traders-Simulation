@@ -36,12 +36,13 @@ void sigchld_handler(int s, siginfo_t *info, void *context) {
     }
 
     if (pid == -1) {
-        perror("waitpid error");
-        exit(6);
+        if (errno == ECHILD) {
+            all_children_terminated = 1;
+        } else {
+            perror("waitpid error");
+            exit(6);
+        }
     } 
-    else if (pids == 0) {
-        all_children_terminated = 1;
-    }
 }
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
@@ -157,7 +158,7 @@ int main(int argc, char ** argv) {
         unlink(fifo_buffer_ex);
         unlink(fifo_buffer_tr);
     }
-    
+
     // free all malloced memory
     free_mem();
 
