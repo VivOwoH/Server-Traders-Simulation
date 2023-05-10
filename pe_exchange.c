@@ -16,12 +16,9 @@ struct fd_pool ex_fds;
 struct fd_pool tr_fds;
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
-int sigchld_received = 0;
-int sigusr1_received = 0;
 int all_children_terminated = 0;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
-    sigusr1_received = 1;
     pid_t pid = -1;
     int status = -1;
     int trader_id = -1;
@@ -50,13 +47,12 @@ void sigchld_handler(int s, siginfo_t *info, void *context) {
 }
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    sigusr1_received = 1;
     puts("exchange received sigusr1");
     signal_node node = (signal_node) malloc(sizeof(struct linkedList));
     node->pid = info->si_pid;
     node->trader_id = info->si_value.sival_int;
     node->next = NULL;
-    enqueue(node); // so that we can process 1 signal at a time
+    enqueue(node);
     return;
 }
 
@@ -134,8 +130,10 @@ int main(int argc, char ** argv) {
     Signal(SIGCHLD, sigchld_handler); 
 
     while (!all_children_terminated) {
+        int process_flag = 1;
         
-        if (!sigchld_received) { 
+        if (process_flag) {
+        
             struct timeval timeout;
             // Set the timeout value to 5 seconds
             timeout.tv_sec = 5;
@@ -145,30 +143,19 @@ int main(int argc, char ** argv) {
             int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
             int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
             
-            // select can be interrupted by sigchld
-            while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
-                puts("Select interrupted by signal");
-                if (sigchld_received == 1)
-                    break;
-                else if (sigusr1_received == 1) {
-                    tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
-                    ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
-                    sigusr1_received = 0;
-                }
-            } 
             if (tr_ret == 0 || ex_ret == 0) {
                 perror("Select timed out");
                 exit(4);
-            } else if ((tr_ret == -1 || ex_ret == -1) && errno != EINTR) {
+            } else if ((tr_ret == -1 || ex_ret == -1)) {
                 perror("Select failed");
                 exit(4);
             }
+
+            process_all_signals();
+            match_order();
+
+            reset_fds();
         }
-
-        process_all_signals();
-        match_order();
-
-        reset_fds();
     }
 
     // disconnect
