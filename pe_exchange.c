@@ -119,9 +119,8 @@ int main(int argc, char ** argv) {
             perror("Select timed out");
             exit(4);
         } else if ((tr_ret == -1 || ex_ret == -1)) {
-            if (errno == EINTR) { // caught and handled
-                break;
-            } else {
+            if (errno == EINTR) ; // caught and handled
+            else {
                 perror("Select failed");
                 exit(4);
             }
