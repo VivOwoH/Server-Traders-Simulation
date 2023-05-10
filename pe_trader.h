@@ -8,7 +8,7 @@
 
 #include "pe_common.h"
 #include "msg_cmd.h"
-#include "mysignal.h"
+#include "queue.h"
 
 int event();
 

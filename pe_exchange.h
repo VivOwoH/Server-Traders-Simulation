@@ -9,7 +9,7 @@
 
 #include "pe_common.h"
 #include "msg_cmd.h"
-#include "mysignal.h"
+#include "queue.h"
 
 struct fd_pool {
     int maxfd;        // largest fd in all ready descriptors (*|all fds|=maxfd+1)
@@ -21,20 +21,11 @@ struct fd_pool {
 extern struct fd_pool * exchange_pool;
 extern struct fd_pool * trader_pool;
 
-struct linkedList {
-    int pid;
-    int trader_id;
-    struct linkedList * next;
-};
-typedef struct linkedList * signal_node;
-
-
 void ini_pipes(int);
 void connect_pipes(int);
-signal_node enqueue(signal_node node);
 int rw_trader(int, int, int);
-void match_order();
 void parse_products(char* filename);
+void match_order();
 void free_mem();
 
 #endif

@@ -10,7 +10,6 @@ int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
 int total_ex_fee = 0;
-signal_node head_sig = NULL;
 pid_t * pids;
 struct fd_pool ex_fds;
 struct fd_pool tr_fds;
@@ -20,14 +19,17 @@ int all_children_terminated = 0;
 // int sigchld_received = 0;
 int sigusr1_received = 0;
 
+
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
     puts("exchange received sigusr1");
     sigusr1_received = 1;
-    // signal_node node = (signal_node) malloc(sizeof(struct linkedList));
+
+    signal_node node = (signal_node) malloc(sizeof(struct linkedList));
     // node->pid = info->si_pid;
-    // node->trader_id = info->si_value.sival_int;
-    // node->next = NULL;
-    // printf("trader_id:%d\n", enqueue(node)->trader_id);
+    node->trader_id = info->si_value.sival_int;
+    node->next = NULL;
+    enqueue(node);
+
     return;
 }
 
@@ -139,12 +141,21 @@ int main(int argc, char ** argv) {
                 perror("Select failed");
                 exit(4);
             } else {
-                for (int i = 0; i < num_traders; i++) {
-                    if (FD_ISSET(trader_pool->fds_set[i], &trader_pool->rfds) 
-                            && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
-                        rw_trader(i, trader_pool->fds_set[i], exchange_pool->fds_set[i]);
+                signal_node curr = head_sig;
+                while (curr != NULL) {
+                    if (FD_ISSET(trader_pool->fds_set[curr->trader_id], &trader_pool->rfds) 
+                            && FD_ISSET(exchange_pool->fds_set[curr->trader_id], &exchange_pool->rfds)) {
+                        rw_trader(curr->trader_id, trader_pool->fds_set[curr->trader_id], 
+                                    exchange_pool->fds_set[curr->trader_id]);
                     }
+                    curr = curr->next;
                 }
+                // for (int i = 0; i < num_traders; i++) {
+                //     if (FD_ISSET(trader_pool->fds_set[i], &trader_pool->rfds) 
+                //             && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
+                //         rw_trader(i, trader_pool->fds_set[i], exchange_pool->fds_set[i]);
+                //     }
+                // }
             } 
             sigusr1_received = 0;
             sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
@@ -198,20 +209,6 @@ int main(int argc, char ** argv) {
     return 0;
 }
 
-
-signal_node enqueue(signal_node node) {
-    if (head_sig == NULL) {
-        head_sig = node;
-    } else {
-        signal_node tmp = head_sig; 
-        while(tmp->next != NULL){
-            tmp = tmp->next; 
-        }
-        tmp->next = node; 
-    }
-    return node;
-}
-
 int rw_trader(int id, int fd_trader, int fd_exchange) {
     char line[BUFFLEN];
     char cmd[ARG_SIZE], product[PRODUCT_LEN];
@@ -229,8 +226,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         exit(4);
     } 
     else if (num_bytes == 0) {
-        puts("Read end of pipe closed");
-        return 1;
+        perror("Read end of pipe closed");
+        exit(4);
     } 
     else {
         for (int i = 0; i < strlen(line); i++){
@@ -373,5 +370,12 @@ void free_mem() {
        tmp = head_sig;
        head_sig = head_sig->next;
        free(tmp);
+    }
+
+    order_node tmp2 = NULL;
+    while (head_order != NULL) {
+       tmp2 = head_order;
+       head_order = head_order->next;
+       free(tmp2);
     }
 }

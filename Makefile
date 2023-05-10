@@ -6,8 +6,8 @@ CC = gcc
 CFLAGS     = -Wall -Wuninitialized -Wmaybe-uninitialized -Werror -Wvla -O0 -std=c11 -g -fsanitize=address,leak,undefined
 LDFLAGS    = -lm -fsanitize=address,leak,undefined
 BINARIES   = pe_exchange pe_trader 
-EX_SRC        = pe_exchange.c mysignal.c
-TR_SRC        = pe_trader.c mysignal.c 
+EX_SRC        = pe_exchange.c queue.c
+TR_SRC        = pe_trader.c queue.c 
 EX_OBJ        = $(EX_SRC:.c=.o)
 TR_OBJ		= $(TR_SRC:.c=.o)
 
