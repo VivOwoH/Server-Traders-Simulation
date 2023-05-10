@@ -28,6 +28,8 @@ void sigchld_handler(int s, siginfo_t *info, void *context) {
         for (int i = 0; i < num_traders; i++) {
             if (pids[i] == pid) {
                 trader_id = i;
+                FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
+                FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
                 break;
             }
         }
@@ -125,6 +127,7 @@ int main(int argc, char ** argv) {
 
     // register signal handler
     Signal(SIGUSR1, sigusr1_handler);
+    Signal(SIGCHLD, sigchld_handler); 
 
     while (!all_children_terminated) {
         sigprocmask(SIG_BLOCK, &mask, NULL);
@@ -136,7 +139,7 @@ int main(int argc, char ** argv) {
         // wait for any fds to become "ready"
         int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
         int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
-        // select can be interrupted by sigchld
+        // select can be interrupted
         while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
             puts("Select interrupted by signal");
             tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
