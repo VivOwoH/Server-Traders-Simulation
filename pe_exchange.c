@@ -147,13 +147,10 @@ int main(int argc, char ** argv) {
                                     exchange_pool->fds_set[head_sig->trader_id]);
                     }
                     dequeue();
+
+                    match_order();                    
+                    report_order_book();
                 }
-                // for (int i = 0; i < num_traders; i++) {
-                //     if (FD_ISSET(trader_pool->fds_set[i], &trader_pool->rfds) 
-                //             && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
-                //         rw_trader(i, trader_pool->fds_set[i], exchange_pool->fds_set[i]);
-                //     }
-                // }
             } 
             sigusr1_received = 0;
             sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
@@ -242,27 +239,29 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
             sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-                printf("%s\n", write_line);
-                add_order(create_order(BUY_ORDER, pids[id], id, product));
+                // printf("%s\n", write_line);
+                add_order(create_order(BUY_ORDER, pids[id], id, order_id, product, qty, price));
                 write(fd_exchange, write_line, strlen(write_line));
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
             sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-                printf("%s\n", write_line);
-                add_order(create_order(SELL_ORDER, pids[id], id, product));
+                // printf("%s\n", write_line);
+                add_order(create_order(SELL_ORDER, pids[id], id, order_id, product, qty, price));
                 write(fd_exchange, write_line, strlen(write_line));
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
             sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
-                printf("%s\n", write_line);
+                // printf("%s\n", write_line);
+                // TODO: amend
                 write(fd_exchange, write_line, strlen(write_line));
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
             sscanf(line, CANCL_MSG, &order_id) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
-                printf("%s\n", write_line);
+                // printf("%s\n", write_line);
+                // TODO: cancel
                 write(fd_exchange, write_line, strlen(write_line));
         }
         else { // invalid command
@@ -274,6 +273,56 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
 }
 
 void match_order() {
+    return;
+}
+
+void report_order_book() {
+    printf("%s    --ORDERBOOK--\n", LOG_PREFIX);
+    // ----------- ORDERS -------------
+    for (int i = 0; i < product_num; i++) {
+        printf("%s    Product: %s; Buy levels: %d; Sell levels: %d\n", 
+                LOG_PREFIX, product_ls[i], buy_level, sell_level);
+        
+        order_node curr = head_order;
+        while (curr != NULL) {
+            if (strcmp(curr->product, product_ls[i])==0) {
+                int qty = curr->qty;
+                int price = curr->price;
+                int num_order = 1;
+                int sec_qty = 0;
+                int sec_price = 0;
+                int sec_num_order = 0;
+                order_node tmp = curr->next;
+                while (tmp->price == price) {
+                    if (tmp->order_type == curr->order_type) {
+                        qty += tmp->qty;
+                        price += tmp->price;
+                        num_order++;
+                        tmp = tmp->next;
+                    } else {
+                        sec_qty += tmp->qty;
+                        sec_price += tmp->price;
+                        sec_num_order++;
+                    }
+                }
+
+                printf("%s        %s %d @ $%d (%d order)\n", 
+                    LOG_PREFIX, CMD_STRING[curr->order_type], qty, price, num_order);
+                if (sec_num_order > 0) {
+                    printf("%s        %s %d @ $%d (%d order)\n", 
+                        LOG_PREFIX, CMD_STRING[1-curr->order_type], sec_qty, 
+                        sec_price, sec_num_order); // buy=0; sell=1
+                }
+                curr = tmp;
+            } 
+            else {
+                curr = curr->next;
+            }
+        }
+    }
+    // ----------- POSITION -------------
+    printf("%s    --POSITIONS--\n", LOG_PREFIX);
+    //TODO: positions
     return;
 }
 

@@ -2,6 +2,8 @@
 
 signal_node head_sig = NULL;
 order_node head_order = NULL;
+int buy_level = 0;
+int sell_level = 0;
 
 // Sigaction wrapper
 handler_t* Signal(int signum, handler_t *handler) {
@@ -44,19 +46,25 @@ void dequeue() {
     free(tmp);
 }
 
-order_node create_order(int type, int pid, int trader_id, char *product) {
+order_node create_order(int type, int pid, int trader_id, int order_id, char *product, int qty, int price) {
     order_node node = (order_node) malloc(sizeof(struct linkedList));
     node->order_type = type;
     node->pid = pid;
     node->trader_id = trader_id;
+    node->order_id = order_id;
     node->product = product;
+    node->qty = qty;
+    node->price = price;
     node->prev = NULL;
     node->next = NULL;
+
     return node;
 }
 
 // sorted by price-time priority
 void add_order(order_node node) {
+    int unique = 1;
+
     if (head_order == NULL) {
         head_order = node;
     } 
@@ -70,6 +78,7 @@ void add_order(order_node node) {
                 tmp->next = NULL;
                 return;
             }
+            unique = (node->price == tmp->price) ? 0 : unique;
             tmp = tmp->next;
         }
 
@@ -79,13 +88,21 @@ void add_order(order_node node) {
             tmp->prev = node;
             tmp->next = NULL;
         } else {
+            unique = (node->price == tmp->price) ? 0 : unique;
             tmp->next = node;
             node->prev = tmp;
         }
+    }
+    // update levels for order book
+    if (unique) {
+        if (node->order_type == BUY_ORDER) 
+            buy_level++;
+        else if (node->order_type == SELL_ORDER)
+            sell_level++;
     }
     return;
 }
 
 void remove_order(int trader_id, int order_id) {
-    
+    // TODO: check buy/sell_level; free mem
 }

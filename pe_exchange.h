@@ -26,6 +26,7 @@ void connect_pipes(int);
 int rw_trader(int, int, int);
 void parse_products(char* filename);
 void match_order();
+void report_order_book();
 void free_mem();
 
 #endif

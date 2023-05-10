@@ -36,7 +36,10 @@ struct linkedList
 typedef struct linkedList *order_node;
 extern order_node head_order;
 
-order_node create_order(int type, int pid, int trader_id, char *product);
+extern int buy_level;
+extern int sell_level;
+
+order_node create_order(int type, int pid, int trader_id, int order_id, char *product, int qty, int price);
 void add_order(order_node node);
 void remove_order(int trader_id, int order_id);
 
