@@ -16,33 +16,35 @@ struct fd_pool ex_fds;
 struct fd_pool tr_fds;
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
+int children_counter = 0;
 int all_children_terminated = 0;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
-    pid_t pid = -1;
-    int status = -1;
-    int trader_id = -1;
+    // pid_t pid = info->si_pid;
+    // int status = -1;
+    int trader_id = info->si_value.sival_int;
+    printf("[PEX] Trader %d disconnected\n", trader_id);
+    children_counter++;
 
-    // wait for all children process to exit
-    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        for (int i = 0; i < num_traders; i++) {
-            if (pids[i] == pid) {
-                trader_id = i;
-                FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
-                FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
-                break;
-            }
-        }
-        printf("[PEX] Trader %d disconnected\n", trader_id);
-    }
+    // // wait for all children process to exit
+    // while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    //     for (int i = 0; i < num_traders; i++) {
+    //         if (pids[i] == pid) {
+    //             trader_id = i;
+    //             FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
+    //             FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
+    //             break;
+    //         }
+    //     }
+    //     printf("[PEX] Trader %d disconnected\n", trader_id);
+    // }
 
-    if (pid == -1) {
-        if (errno == ECHILD) {
+    if (children_counter == num_traders) {
             all_children_terminated = 1;
-        } else {
-            perror("waitpid error");
-            exit(6);
-        }
+        // } else {
+        //     perror("waitpid error");
+        //     exit(6);
+        // }
     } 
 }
 
@@ -52,7 +54,7 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
     node->pid = info->si_pid;
     node->trader_id = info->si_value.sival_int;
     node->next = NULL;
-    enqueue(node);
+    printf("trader_id:%d\n", enqueue(node)->trader_id);
     return;
 }
 
