@@ -56,6 +56,13 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
     return;
 }
 
+void reset_fds() {
+    for (int i = 0; i < num_traders; i++) {
+        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // reset
+        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
+    }
+}
+
 // ----------------------------------------------------------
 // -------------------------- MAIN --------------------------
 // ----------------------------------------------------------
@@ -106,10 +113,8 @@ int main(int argc, char ** argv) {
     }
 
     // -------------------------- MARKET OPEN --------------------------
+    reset_fds();
     for (int i = 0; i < num_traders; i++) {
-        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // reset
-        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
-        
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             char msg[] = MARKET_OPEN_MSG;
             write(exchange_pool->fds_set[i], msg, strlen(msg));
@@ -130,35 +135,38 @@ int main(int argc, char ** argv) {
 
     while (!all_children_terminated) {
         int process_flag = 1;
-
-        sigprocmask(SIG_BLOCK, &mask, NULL); // block sigusr1
         
-        struct timeval timeout;
-        // Set the timeout value to 3 seconds
-        timeout.tv_sec = 3;
-
-        // wait for any fds to become "ready"
-        int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
-        int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
-        
-        sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock sigusr1
-        
-        // select can be interrupted by sigchld
-        if ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
-            puts("Select interrupted by signal");
-            process_flag = 0;
-            break;
-        } else if (tr_ret == 0 || ex_ret == 0) {
-            perror("Select timed out");
-            exit(4);
-        } else if ((tr_ret == -1 || ex_ret == -1) && errno != EINTR) {
-            perror("Select failed");
-            exit(4);
-        }
-
         if (process_flag) {
+            sigprocmask(SIG_BLOCK, &mask, NULL); // block sigusr1
+        
+            struct timeval timeout;
+            // Set the timeout value to 3 seconds
+            timeout.tv_sec = 3;
+            timeout.tv_usec = 0;
+            
+            // wait for any fds to become "ready"
+            int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
+            int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
+            
+            sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock sigusr1
+            
+            // select can be interrupted by sigchld
+            if ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
+                puts("Select interrupted by signal");
+                process_flag = 0;
+                break;
+            } else if (tr_ret == 0 || ex_ret == 0) {
+                perror("Select timed out");
+                exit(4);
+            } else if ((tr_ret == -1 || ex_ret == -1) && errno != EINTR) {
+                perror("Select failed");
+                exit(4);
+            }
+
             process_all_signals();
             match_order();
+
+            reset_fds();
         }
     }
 
