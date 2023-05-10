@@ -16,36 +16,10 @@ struct fd_pool ex_fds;
 struct fd_pool tr_fds;
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
-int children_counter = 0;
-int all_children_terminated = 0;
+int sigchld_received = 0;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
-    // pid_t pid = info->si_pid;
-    // int status = -1;
-    int trader_id = info->si_value.sival_int;
-    printf("[PEX] Trader %d disconnected\n", trader_id);
-    children_counter++;
-
-    // // wait for all children process to exit
-    // while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-    //     for (int i = 0; i < num_traders; i++) {
-    //         if (pids[i] == pid) {
-    //             trader_id = i;
-    //             FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
-    //             FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
-    //             break;
-    //         }
-    //     }
-    //     printf("[PEX] Trader %d disconnected\n", trader_id);
-    // }
-
-    if (children_counter == num_traders) {
-            all_children_terminated = 1;
-        // } else {
-        //     perror("waitpid error");
-        //     exit(6);
-        // }
-    } 
+    sigchld_received = 1;
 }
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
@@ -131,7 +105,7 @@ int main(int argc, char ** argv) {
     Signal(SIGUSR1, sigusr1_handler);
     Signal(SIGCHLD, sigchld_handler); 
 
-    while (!all_children_terminated) {
+    while (!sigchld_received) {
         struct timeval timeout;
         // Set the timeout value to 5 seconds
         timeout.tv_sec = 5;
@@ -158,6 +132,30 @@ int main(int argc, char ** argv) {
 
         reset_fds();
     }
+
+    pid_t pid = -1;
+    int status = -1;
+    int trader_id = -1;
+    
+    // wait for all children process to exit
+    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        for (int i = 0; i < num_traders; i++) {
+            if (pids[i] == pid) {
+                trader_id = i;
+                break;
+            }
+        }
+        printf("[PEX] Trader %d disconnected\n", trader_id);
+    }
+
+    if (pid == -1) {
+        // if (errno == ECHILD) {
+        //     break;
+        // } else {
+            perror("waitpid error");
+            exit(6);
+        // }
+    } 
 
     // disconnect
     for (int i = 0; i < num_traders; i++){
@@ -226,6 +224,7 @@ int process_all_signals() {
                         break;
                     } 
                 }
+                printf("[PEX] [T%d] Parsing command: <%s>\n", id, line);
 
                 sscanf(line, "%s", cmd); // read until first space
                 char write_line[BUFFLEN];
