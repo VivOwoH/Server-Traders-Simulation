@@ -130,32 +130,31 @@ int main(int argc, char ** argv) {
     Signal(SIGCHLD, sigchld_handler); 
 
     while (!all_children_terminated) {
-        int process_flag = 1;
+        struct timeval timeout;
+        // Set the timeout value to 5 seconds
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 0;
         
-        if (process_flag) {
+        // wait for any fds to become "ready"
+        int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
+        int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
         
-            struct timeval timeout;
-            // Set the timeout value to 5 seconds
-            timeout.tv_sec = 5;
-            timeout.tv_usec = 0;
-            
-            // wait for any fds to become "ready"
-            int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
-            int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
-            
-            if (tr_ret == 0 || ex_ret == 0) {
-                perror("Select timed out");
-                exit(4);
-            } else if ((tr_ret == -1 || ex_ret == -1)) {
+        if (tr_ret == 0 || ex_ret == 0) {
+            perror("Select timed out");
+            exit(4);
+        } else if ((tr_ret == -1 || ex_ret == -1)) {
+            if (errno == EINTR) { // caught and handled
+                break;
+            } else {
                 perror("Select failed");
                 exit(4);
             }
-
-            process_all_signals();
-            match_order();
-
-            reset_fds();
         }
+
+        process_all_signals();
+        match_order();
+
+        reset_fds();
     }
 
     // disconnect
