@@ -148,12 +148,11 @@ int main(int argc, char ** argv) {
     }
 
     if (pid == -1) {
-        // if (errno == ECHILD) {
-        //     break;
-        // } else {
+        if (errno == ECHILD) ;
+        else {
             perror("waitpid error");
             exit(6);
-        // }
+        }
     } 
 
     // disconnect
