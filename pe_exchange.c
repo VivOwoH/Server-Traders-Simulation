@@ -120,17 +120,17 @@ int main(int argc, char ** argv) {
         }
     }
     
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGUSR1);
-    sigaddset(&mask, SIGCHLD);
+    // sigset_t mask;
+    // sigemptyset(&mask);
+    // sigaddset(&mask, SIGUSR1);
+    // sigaddset(&mask, SIGCHLD);
 
     // register signal handler
     Signal(SIGUSR1, sigusr1_handler);
     Signal(SIGCHLD, sigchld_handler); 
 
     while (!all_children_terminated) {
-        sigprocmask(SIG_BLOCK, &mask, NULL);
+        // sigprocmask(SIG_BLOCK, &mask, NULL);
 
         struct timeval timeout;
         // Set the timeout value to 3 seconds
@@ -153,7 +153,7 @@ int main(int argc, char ** argv) {
             exit(4);
         }
 
-        sigprocmask(SIG_UNBLOCK, &mask, NULL);
+        // sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
         process_next_signal();
     }
