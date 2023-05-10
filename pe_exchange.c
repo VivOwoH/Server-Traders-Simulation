@@ -19,7 +19,6 @@ struct fd_pool * trader_pool = &tr_fds;
 int all_children_terminated = 0;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
-    puts("child terminated");
     pid_t pid = -1;
     int status = -1;
     int trader_id = -1;
@@ -118,12 +117,18 @@ int main(int argc, char ** argv) {
             exit(4);
         }
     }
+    
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGUSR1);
+    sigaddset(&mask, SIGCHLD);
 
     // register signal handler
     Signal(SIGUSR1, sigusr1_handler);
-    Signal(SIGCHLD, sigchld_handler); 
 
     while (!all_children_terminated) {
+        sigprocmask(SIG_BLOCK, &mask, NULL);
+
         struct timeval timeout;
         // Set the timeout value to 3 seconds
         timeout.tv_sec = 3;
@@ -144,6 +149,8 @@ int main(int argc, char ** argv) {
             perror("Select failed");
             exit(4);
         }
+
+        sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
         process_next_signal();
     }
