@@ -20,10 +20,6 @@ int all_children_terminated = 0;
 // int sigchld_received = 0;
 int sigusr1_received = 0;
 
-void sigchld_handler(int s, siginfo_t *info, void *context) {
-    // sigchld_received = 1;
-}
-
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
     puts("exchange received sigusr1");
     sigusr1_received = 1;
@@ -62,7 +58,7 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
-    puts("[PEX] Starting");
+    printf("%s Starting", LOG_PREFIX);
 
     // e.g. ./pe_exchange products.txt ./trader_a ./trader_b
     parse_products(argv[1]);
@@ -92,7 +88,7 @@ int main(int argc, char ** argv) {
         else if (pid == 0) { // child process: exec binary
             char buffer[BUFFLEN];
             snprintf(buffer, BUFFLEN,"%d",i);
-            printf("[PEX] Starting trader %d (%s)\n", i, argv[i+2]);
+            printf("%s Starting trader %d (%s)\n", LOG_PREFIX, i, argv[i+2]);
             execl(argv[i+2], argv[i+2], buffer, (char*) NULL); 
             perror("execv"); // If exec success it will never return
             exit(3);
@@ -168,7 +164,7 @@ int main(int argc, char ** argv) {
                     break;
                 }
             }
-            printf("[PEX] Trader %d disconnected\n", trader_id);
+            printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
         }
 
         if (pid == -1) {
@@ -196,8 +192,8 @@ int main(int argc, char ** argv) {
     // free all malloced memory
     free_mem();
 
-    puts("[PEX] Trading completed");
-    printf("[PEX] Exchange fees collected: $%d\n", total_ex_fee);
+    printf("%s Trading completed", LOG_PREFIX);
+    printf("%s Exchange fees collected: $%d\n", LOG_PREFIX, total_ex_fee);
     
     return 0;
 }
@@ -218,7 +214,7 @@ signal_node enqueue(signal_node node) {
 
 int rw_trader(int id, int fd_trader, int fd_exchange) {
     char line[BUFFLEN];
-    char cmd[ARG_SIZE], product[ARG_SIZE];
+    char cmd[ARG_SIZE], product[PRODUCT_LEN];
     int order_id = -1;
     int qty = -1;
     int price = -1;
@@ -243,7 +239,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 break;
             } 
         }
-        printf("[PEX] [T%d] Parsing command: <%s>\n", id, line);
+        printf("%s [T%d] Parsing command: <%s>\n", LOG_PREFIX, id, line);
 
         sscanf(line, "%s", cmd); // read until first space
         char write_line[BUFFLEN];
@@ -301,7 +297,7 @@ void parse_products(char* filename) {
         strcpy(product_ls[i], buffer);
     }
     
-    printf("[PEX] Trading %d products: ", product_num);
+    printf("%s Trading %d products: ", LOG_PREFIX, product_num);
     for (int i = 0; i < product_num; i++) {
         // printf("%s", product_ls[i]);
         if (i == product_num-1)
@@ -333,8 +329,8 @@ void ini_pipes(int i) {
     }
 
     // successfully created 2 fifos
-    printf("[PEX] Created FIFO /tmp/pe_exchange_%d\n", i);
-    printf("[PEX] Created FIFO /tmp/pe_trader_%d\n", i);
+    printf("%s Created FIFO /tmp/pe_exchange_%d\n", LOG_PREFIX, i);
+    printf("%s Created FIFO /tmp/pe_trader_%d\n", LOG_PREFIX, i);
     return;
 }
 
@@ -356,13 +352,8 @@ void connect_pipes(int i) {
         exit(4);
     }
 
-    printf("[PEX] Connected to /tmp/pe_exchange_%d\n", i);
-    printf("[PEX] Connected to /tmp/pe_trader_%d\n", i);
-
-    // if (fd_tr > trader_pool->maxfd)
-    //     trader_pool->maxfd = fd_tr;
-    // if (fd_ex > exchange_pool->maxfd)
-    //     exchange_pool->maxfd = fd_ex;
+    printf("%s Connected to /tmp/pe_exchange_%d\n", LOG_PREFIX, i);
+    printf("%s Connected to /tmp/pe_trader_%d\n", LOG_PREFIX, i);
     
     return;
 }

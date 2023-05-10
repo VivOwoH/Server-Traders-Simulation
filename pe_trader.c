@@ -79,7 +79,7 @@ int main(int argc, char ** argv) {
 
 int event() {
     char line[BUFFLEN];
-    char arg0[ARG_SIZE], cmd[ARG_SIZE], product[ARG_SIZE];
+    char arg0[ARG_SIZE], cmd[ARG_SIZE], product[PRODUCT_LEN];
     int qty = -1;
     int price = -1;
 
