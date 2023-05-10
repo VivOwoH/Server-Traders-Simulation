@@ -30,8 +30,8 @@ struct linkedList {
 typedef struct linkedList * signal_node;
 
 
-void ini_pipes();
-void connect_pipes();
+void ini_pipes(int);
+void connect_pipes(int);
 signal_node enqueue(signal_node node);
 int process_next_signal();
 int tear_down();

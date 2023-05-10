@@ -18,7 +18,7 @@ struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
 
 void sigchld_handler(int s, siginfo_t *info, void *context) {
-
+    puts("child terminated");
 }
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
@@ -52,14 +52,15 @@ int main(int argc, char ** argv) {
     trader_pool->fds_set = malloc(sizeof(int) * (num_traders)); 
     exchange_pool->fds_set = malloc(sizeof(int) * (num_traders)); 
 
-    // initialization
-    ini_pipes();
-
     // launch binaries (fork + exec)
     // each child exchange has a ex_fd that connects to the corresponding tr_fd
     // i.e. exchange_child_0 [exchange_fd_0] <-> [trader_fd_0] trader 0
     pids = malloc(sizeof(pid_t) * (num_traders));
+
     for (int i = 0; i < num_traders; i++) {
+        // initialization
+        ini_pipes(i);
+
         pid_t pid = fork();
         pids[i] = pid;
 
@@ -74,12 +75,10 @@ int main(int argc, char ** argv) {
             execl(argv[i+2], argv[i+2], buffer, (char*) NULL); 
             perror("execv"); // If exec success it will never return
             exit(3);
-        } 
-
-        usleep(50000); // give some time for trader to connect first
+        }
+        usleep(20000); // give some time for trader to connect and suspend
+        connect_pipes(i);
     }
-
-    connect_pipes();
 
     // -------------------------- MARKET OPEN --------------------------
     for (int i = 0; i < num_traders; i++) {
@@ -97,21 +96,21 @@ int main(int argc, char ** argv) {
     // sigemptyset(&mask); // clears all signals in mask
     // sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
+    int tr_ret = -1;
+    int ex_ret = -1;
     while (1) {
         // wait for fds to become "ready"
-        int tr_ret = -1;
-        int ex_ret = -1;
         while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
             tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
             ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, NULL);
-        }
-        
-        if (tr_ret == 0 || ex_ret == 0) {
-            perror("Select timed out");
-            exit(4);
-        } else if (tr_ret == -1 || ex_ret == -1) {
-            perror("Select failed");
-            exit(4);
+
+            if (tr_ret == 0 || ex_ret == 0) {
+                perror("Select timed out");
+                exit(4);
+            } else if ((tr_ret == -1 || ex_ret == -1) && errno != EINTR) {
+                perror("Select failed");
+                exit(4);
+            }
         }
 
         if (process_next_signal() == 0)
@@ -248,68 +247,63 @@ void parse_products(char* filename) {
     fclose(fp);
 }
 
-// create pipes for traders
-void ini_pipes() {
-    for (int i = 0; i < num_traders; i++) {
-        char fifo_buffer_ex[BUFFLEN], fifo_buffer_tr[BUFFLEN];
-        snprintf(fifo_buffer_ex, BUFFLEN, FIFO_EXCHANGE, i); // i = assigned trader id (from 0)  
-        snprintf(fifo_buffer_tr, BUFFLEN, FIFO_TRADER, i);  
-        unlink(fifo_buffer_ex); // remove if exist
-        unlink(fifo_buffer_tr);
+// create pipes for 1 trader
+void ini_pipes(int i) {
+    char fifo_buffer_ex[BUFFLEN], fifo_buffer_tr[BUFFLEN];
+    snprintf(fifo_buffer_ex, BUFFLEN, FIFO_EXCHANGE, i); // i = assigned trader id (from 0)  
+    snprintf(fifo_buffer_tr, BUFFLEN, FIFO_TRADER, i);  
+    unlink(fifo_buffer_ex); // remove if exist
+    unlink(fifo_buffer_tr);
 
-        // create two named pipes
-        // 0777 = read, write, & execute for owner, group and others
-        if (mkfifo(fifo_buffer_tr, 0777) == -1) {
-            perror("make fifo_trader failed");
-            exit(4);
-        }
-        if (mkfifo(fifo_buffer_ex, 0777) == -1) {
-            perror("make fifo_exchange failed");
-            exit(4);
-        }
-
-        // successfully created 2 fifos
-        printf("[PEX] Created FIFO /tmp/pe_exchange_%d\n", i);
-        printf("[PEX] Created FIFO /tmp/pe_trader_%d\n", i);
+    // create two named pipes
+    // 0777 = read, write, & execute for owner, group and others
+    if (mkfifo(fifo_buffer_tr, 0777) == -1) {
+        perror("make fifo_trader failed");
+        exit(4);
     }
+    if (mkfifo(fifo_buffer_ex, 0777) == -1) {
+        perror("make fifo_exchange failed");
+        exit(4);
+    }
+
+    // successfully created 2 fifos
+    printf("[PEX] Created FIFO /tmp/pe_exchange_%d\n", i);
+    printf("[PEX] Created FIFO /tmp/pe_trader_%d\n", i);
     return;
 }
 
-void connect_pipes() {
-    for (int i = 0; i < num_traders; i++) {
-        char fifo_buffer_ex[BUFFLEN], fifo_buffer_tr[BUFFLEN];
-        snprintf(fifo_buffer_ex, BUFFLEN, FIFO_EXCHANGE, i); // i = assigned trader id (from 0)  
-        snprintf(fifo_buffer_tr, BUFFLEN, FIFO_TRADER, i);  
+// create pipes for 1 trader
+void connect_pipes(int i) {
+    char fifo_buffer_ex[BUFFLEN], fifo_buffer_tr[BUFFLEN];
+    snprintf(fifo_buffer_ex, BUFFLEN, FIFO_EXCHANGE, i); // i = assigned trader id (from 0)  
+    snprintf(fifo_buffer_tr, BUFFLEN, FIFO_TRADER, i);  
 
-        // exchange write to fifo_ex; read from fifo_tr
-        int fd_tr = open(fifo_buffer_tr, O_RDONLY | O_NONBLOCK);
-        trader_pool->fds_set[i] = fd_tr;
-        int fd_ex = open(fifo_buffer_ex, O_RDWR | O_NONBLOCK); // must read to open write in non-block
-        exchange_pool->fds_set[i] = fd_ex;
-        
-        if (fd_tr == -1 || fd_ex == -1) {
-            printf("r_fd=%d w_fd=%d\n", fd_tr, fd_ex);
-            perror("open fifo failed");
-            exit(4);
-        }
-
-        // successfully connected
-        printf("[PEX] Connected to /tmp/pe_exchange_%d\n", i);
-        printf("[PEX] Connected to /tmp/pe_trader_%d\n", i);
-        
-        if (fd_tr > trader_pool->maxfd)
-            trader_pool->maxfd = fd_tr;
-        if (fd_ex > exchange_pool->maxfd)
-            exchange_pool->maxfd = fd_ex;
-        
-        FD_ZERO(&trader_pool->rfds); // clear all
-        FD_ZERO(&exchange_pool->rfds);
+    // exchange write to fifo_ex; read from fifo_tr
+    int fd_tr = open(fifo_buffer_tr, O_RDONLY | O_NONBLOCK);
+    trader_pool->fds_set[i] = fd_tr;
+    int fd_ex = open(fifo_buffer_ex, O_RDWR | O_NONBLOCK); // must read to open write in non-block
+    exchange_pool->fds_set[i] = fd_ex;
+    
+    if (fd_tr == -1 || fd_ex == -1) {
+        printf("r_fd=%d w_fd=%d\n", fd_tr, fd_ex);
+        perror("open fifo failed");
+        exit(4);
     }
 
-    for (int i = 0; i < num_traders; i++) {
-        FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // add created fds to rfds
-        FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
-    }
+    // successfully connected
+    printf("[PEX] Connected to /tmp/pe_exchange_%d\n", i);
+    printf("[PEX] Connected to /tmp/pe_trader_%d\n", i);
+    
+    if (fd_tr > trader_pool->maxfd)
+        trader_pool->maxfd = fd_tr;
+    if (fd_ex > exchange_pool->maxfd)
+        exchange_pool->maxfd = fd_ex;
+    
+    FD_ZERO(&trader_pool->rfds); // clear all
+    FD_ZERO(&exchange_pool->rfds);
+
+    FD_SET(exchange_pool->fds_set[i], &exchange_pool->rfds); // add created fds to rfds
+    FD_SET(trader_pool->fds_set[i], &trader_pool->rfds);
     return;
 }
 
