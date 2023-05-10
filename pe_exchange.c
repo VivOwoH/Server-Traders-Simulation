@@ -122,15 +122,17 @@ int main(int argc, char ** argv) {
     
     sigset_t mask;
     sigemptyset(&mask);
-    sigaddset(&mask, SIGUSR1);
+    sigaddset(&mask, SIGUSR1); // block sigusr1
 
     // register signal handler
     Signal(SIGUSR1, sigusr1_handler);
     Signal(SIGCHLD, sigchld_handler); 
 
     while (!all_children_terminated) {
-        sigprocmask(SIG_BLOCK, &mask, NULL);
+        int process_flag = 1;
 
+        sigprocmask(SIG_BLOCK, &mask, NULL); // block sigusr1
+        
         struct timeval timeout;
         // Set the timeout value to 3 seconds
         timeout.tv_sec = 3;
@@ -138,12 +140,15 @@ int main(int argc, char ** argv) {
         // wait for any fds to become "ready"
         int tr_ret = trader_pool->num_rfds = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
         int ex_ret = exchange_pool->num_rfds = select(exchange_pool->maxfd+1, &exchange_pool->rfds, NULL, NULL, &timeout);
-        // select can be interrupted
-        while ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
+        
+        sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock sigusr1
+        
+        // select can be interrupted by sigchld
+        if ((tr_ret == -1 || ex_ret == -1) && errno == EINTR) {
             puts("Select interrupted by signal");
+            process_flag = 0;
             break;
-        }
-        if (tr_ret == 0 || ex_ret == 0) {
+        } else if (tr_ret == 0 || ex_ret == 0) {
             perror("Select timed out");
             exit(4);
         } else if ((tr_ret == -1 || ex_ret == -1) && errno != EINTR) {
@@ -151,10 +156,10 @@ int main(int argc, char ** argv) {
             exit(4);
         }
 
-        sigprocmask(SIG_UNBLOCK, &mask, NULL);
-
-        process_next_signal();
-        match_order();
+        if (process_flag) {
+            process_all_signals();
+            match_order();
+        }
     }
 
     // disconnect
@@ -191,8 +196,8 @@ signal_node enqueue(signal_node node) {
     return head_sig;
 }
 
-int process_next_signal() {
-    if (head_sig != NULL) {
+int process_all_signals() {
+    while (head_sig != NULL) {
         puts("next signal is being processed");
         int id = head_sig->trader_id;
 
@@ -262,7 +267,6 @@ int process_next_signal() {
             exit(4);
         }
         head_sig = head_sig->next; // remove this node after finished processing
-        return 1;
     }
     puts("no signal in queue");
     return 0;
