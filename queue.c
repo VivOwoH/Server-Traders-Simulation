@@ -1,6 +1,5 @@
 #include "queue.h"
 
-// TODO: array of headers [product_num]
 signal_node head_sig = NULL;
 orderbook_node * orderbook;
 int orderbook_size = 0;
@@ -113,6 +112,8 @@ void add_order(order_node node) {
             tmp->next = node;
             node->prev = tmp;
         }
+        printf("%d\n", book->head_order->order_id);
+        printf("%d\n", book->head_order->next->order_id);
     }
     // update levels for order book
     if (unique) {
