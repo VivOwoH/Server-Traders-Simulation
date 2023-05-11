@@ -109,9 +109,11 @@ void add_order(order_node node) {
         order_node tmp = book->head_order; 
         while(tmp->next != NULL) {
             if (node->price > tmp->price) {
+                book->head_order = (tmp==book->head_order) ? node : book->head_order;
                 node->next = tmp;
                 node->prev = tmp->prev;
-                tmp->prev->next = node; 
+                if (tmp->prev != NULL)
+                    tmp->prev->next = node; 
                 tmp->prev = node;
                 return;
             }
@@ -123,7 +125,8 @@ void add_order(order_node node) {
             book->head_order = (tmp==book->head_order) ? node : book->head_order;
             node->next = tmp;
             node->prev = tmp->prev;
-            tmp->prev->next = node; 
+            if (tmp->prev != NULL)
+                tmp->prev->next = node; 
             tmp->prev = node;
         } else {
             book->tail_order = (tmp==book->tail_order) ? node : book->tail_order;
@@ -144,6 +147,7 @@ void add_order(order_node node) {
 
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) {
     // TODO: check buy/sell_level, amend order
+
     return NULL;
 }
 
