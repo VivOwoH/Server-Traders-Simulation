@@ -21,13 +21,8 @@ int sigusr1_received = 0;
 
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    // register signal handler
-    sigset_t mask;
-    sigemptyset(&mask); // clears all signals in mask
-    sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
-    sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
 
-    printf("exchange received sigusr1 from %d\n", info->si_value.sival_int);
+    printf("exchange received sigusr1 from %d\n", info->si_pid);
     sigusr1_received++;
 
     signal_node node = (signal_node) malloc(sizeof(struct queue));
