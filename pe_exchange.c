@@ -152,7 +152,7 @@ int main(int argc, char ** argv) {
 
     sigemptyset(&mask); // clears all signals in mask
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
-    sigaddset(&mask, SIGCHLD); // add sigchld to the set
+    // sigaddset(&mask, SIGCHLD); // add sigchld to the set
 
     while (!all_children_terminated) {
         sigprocmask(SIG_BLOCK, &mask, NULL); // block
@@ -405,6 +405,7 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
 }
 
 void match_order() {
+    puts("matching order......");
     orderbook_node book = NULL;
     order_node highest_buy = NULL;
     order_node lowest_sell = NULL;
@@ -568,7 +569,7 @@ void connect_pipes(int i) {
     snprintf(fifo_buffer_tr, BUFFLEN, FIFO_TRADER, i);  
 
     // exchange write to fifo_ex; read from fifo_tr
-    int fd_tr = open(fifo_buffer_tr, O_RDWR | O_NONBLOCK);
+    int fd_tr = open(fifo_buffer_tr, O_RDONLY | O_NONBLOCK);
     trader_pool->fds_set[i] = fd_tr;
     int fd_ex = open(fifo_buffer_ex, O_RDWR | O_NONBLOCK); // must read to open write in non-block
     exchange_pool->fds_set[i] = fd_ex;
@@ -586,7 +587,6 @@ void connect_pipes(int i) {
 }
 
 void free_mem() {
-    // TODO: free trader info
     for (int i = 0; i < product_num; i++) {
         free(product_ls[i]);
     }
