@@ -323,7 +323,6 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (!success_order)
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
 
-        usleep(10000);
         if (kill(pids[id], SIGUSR1) == -1) {
             perror("signal: kill failed");
             exit(1);
@@ -347,7 +346,6 @@ void market_alert(int pid, order_node order) {
     for (int i = 0; i < num_traders; i++) {
         if (pid != pids[i] && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             write(exchange_pool->fds_set[i], market_line, strlen(market_line));
-            usleep(10000);
             if (kill(pids[i], SIGUSR1)==-1) {
                 perror("signal: kill failed");
                 exit(1);
