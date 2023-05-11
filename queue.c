@@ -126,10 +126,12 @@ void add_order(order_node node) {
     return;
 }
 
-void amend_order(int trader_id, int order_id, int new_qty, int new_price) {
+order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) {
     // TODO: check buy/sell_level, amend order
+    return NULL;
 }
 
-void cancel_order(int trader_id, int order_id) {
+order_node cancel_order(int trader_id, int order_id) {
     // TODO: check buy/sell_level; free mem
+    return NULL;
 }

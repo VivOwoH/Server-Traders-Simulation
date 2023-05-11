@@ -1,10 +1,4 @@
 // maintain commands and responses here with X-Macros
-/* #define _RESPONSE(_MSG) \
-         _MSG(ACCEPTED)   \
-         _MSG(AMENDED)  \
-         _MSG(CANCELLED)   \
-         _MSG(INVALID)  \*/
-
 #define _COMMAND(_CMD) \
         _CMD(BUY)   \
         _CMD(SELL)  \
@@ -15,15 +9,10 @@
 #define _TO_ENUM(ENUM) ENUM, // comma to separate elements
 #define _TO_STRING(STRING) #STRING,  // #=stringification 
 
-// enum RESPONSES {
-//     _RESPONSE(_TO_ENUM)
-// };
 enum COMMANDS {
     _COMMAND(_TO_ENUM)
 };
-// static const char * RESPONSE_STRING[] = {
-//     _RESPONSE(_TO_STRING)
-// };
+
 static const char * CMD_STRING[] = {
     _COMMAND(_TO_STRING)
 };

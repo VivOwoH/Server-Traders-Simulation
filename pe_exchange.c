@@ -63,7 +63,6 @@ int main(int argc, char ** argv) {
 
     printf("%s Starting\n", LOG_PREFIX);
 
-    // e.g. ./pe_exchange products.txt ./trader_a ./trader_b
     parse_products(argv[1]);
     create_orderbook(product_num, product_ls); // each product has a orderbook
 
@@ -213,6 +212,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     int order_id = -1;
     int qty = -1;
     int price = -1;
+    int market_alert_flag = 1;
+    order_node order = NULL;
 
     // printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
 
@@ -242,39 +243,58 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
             sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-                // printf("%s\n", write_line);
-                add_order(create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price));
+                order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
+                add_order(order);
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
             sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-                // printf("%s\n", write_line);
-                add_order(create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price));
+                order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
+                add_order(order);
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
             sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
-                // printf("%s\n", write_line);
-                // TODO: amend
+                order = amend_order(id, order_id, qty, price);
                 write(fd_exchange, write_line, strlen(write_line));
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
             sscanf(line, CANCL_MSG, &order_id) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
-                // printf("%s\n", write_line);
-                // TODO: cancel
+                order = cancel_order(id, order_id);
                 write(fd_exchange, write_line, strlen(write_line));
         }
         else { // invalid command
+            market_alert_flag = 0;
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
         }
         kill(pids[id], SIGUSR1);
+
+        if (market_alert_flag)
+            market_alert(pids[id], order);
     }
     return 0;
+}
+
+void market_alert(int pid, order_node order) {
+    if (order == NULL) {
+        perror("null order");
+        exit(6);
+    }
+
+    char market_line[BUFFLEN];
+    snprintf(market_line, BUFFLEN, MARKET_MSG, CMD_STRING[order->order_type], order->product,
+                    order->qty, order->price);
+    for (int i = 0; i < num_traders; i++) {
+        if (pid != pids[i] && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
+            write(exchange_pool->fds_set[i], market_line, strlen(market_line));
+            kill(pids[i], SIGUSR1);
+        }
+    }
 }
 
 void match_order() {

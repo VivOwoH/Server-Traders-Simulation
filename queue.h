@@ -49,7 +49,7 @@ extern orderbook_node * orderbook;
 void create_orderbook(int product_num, char ** product_ls);
 order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price);
 void add_order(order_node node);
-void amend_order(int trader_id, int order_id, int new_qty, int new_price);
-void cancel_order(int trader_id, int order_id);
+order_node amend_order(int trader_id, int order_id, int new_qty, int new_price);
+order_node cancel_order(int trader_id, int order_id);
 
 #endif

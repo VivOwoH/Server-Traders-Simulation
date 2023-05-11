@@ -24,6 +24,7 @@ extern struct fd_pool * trader_pool;
 void ini_pipes(int);
 void connect_pipes(int);
 int rw_trader(int, int, int);
+void market_alert(int pid, order_node order);
 void parse_products(char* filename);
 void match_order();
 void report_order_book();
