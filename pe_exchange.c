@@ -115,7 +115,10 @@ int main(int argc, char ** argv) {
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             char msg[] = MARKET_OPEN_MSG;
             write(exchange_pool->fds_set[i], msg, strlen(msg));
-            kill(pids[i], SIGUSR1);
+            if (kill(pids[i], SIGUSR1) == -1) {
+                perror("signal: kill failed");
+                exit(1);
+            }
         } else {
             perror("file descriptor not ready");
             exit(4);
@@ -288,12 +291,13 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(SELL, order_id, product, qty, price);
-
+            printf("T%d: %d\n", id, success_order);
             if (success_order) {
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
+                puts("reach here");
             }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
@@ -323,7 +327,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (!success_order)
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
 
-        kill(pids[id], SIGUSR1);
+        if (kill(pids[id], SIGUSR1) == -1) {
+            perror("signal: kill failed");
+            exit(1);
+        }
 
         if (success_order)
             market_alert(pids[id], order);
@@ -343,7 +350,10 @@ void market_alert(int pid, order_node order) {
     for (int i = 0; i < num_traders; i++) {
         if (pid != pids[i] && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             write(exchange_pool->fds_set[i], market_line, strlen(market_line));
-            kill(pids[i], SIGUSR1);
+            if (kill(pids[i], SIGUSR1)==-1) {
+                perror("signal: kill failed");
+                exit(1);
+            }
         }
     }
 }
@@ -398,11 +408,17 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     char write_line[BUFFLEN], write_line_2[BUFFLEN];
     snprintf(write_line, BUFFLEN, FILL_MSG, highest_buy->order_id, buy_fill_qty);
     write(buy_fd, write_line, strlen(write_line));
-    kill(highest_buy->pid, SIGUSR1);
+    if (kill(highest_buy->pid, SIGUSR1)==-1) {
+        perror("signal: kill failed");
+        exit(1);
+    }
 
     snprintf(write_line_2, BUFFLEN, FILL_MSG, lowest_sell->order_id, sell_fill_qty);
     write(sell_fd, write_line_2, strlen(write_line_2));
-    kill(lowest_sell->pid, SIGUSR1);
+    if (kill(lowest_sell->pid, SIGUSR1)==-1) {
+        perror("signal: kill failed");
+        exit(1);
+    }
 }
 
 void match_order() {
