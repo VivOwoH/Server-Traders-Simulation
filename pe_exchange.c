@@ -414,7 +414,8 @@ void match_order() {
     for (int i = 0; i < product_num; i++) {
         book = orderbook[i];
         int cont = 1;
-        while (cont) {
+        lowest_sell = book->tail_order;
+        while (cont && lowest_sell != NULL) {
             lowest_sell = book->tail_order;
         
             head_curr = book->head_order;
@@ -434,8 +435,7 @@ void match_order() {
             }
             
             // match success
-            if (highest_buy != NULL && lowest_sell != NULL 
-                    && (highest_buy->price >= lowest_sell->price)) {
+            if (highest_buy != NULL && (highest_buy->price >= lowest_sell->price)) {
                 match_order_report(highest_buy, lowest_sell);
             } else cont = 0;
         } 
