@@ -21,7 +21,7 @@ int pid_wip[2] = {0};
 int order_time = 0; // orders from earliest to latest
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    // printf("exchange received sigusr1 from %d\n", info->si_pid);
+    printf("exchange received sigusr1 from %d\n", info->si_pid);
     pid_wip[0] = info->si_pid;
     for (int i = 0; i < num_traders; i++) {
         if (pids[i] == pid_wip[0]) {
@@ -132,17 +132,17 @@ int main(int argc, char ** argv) {
     // -------------------------- MARKET OPEN --------------------------
     reset_fds();
     for (int i = 0; i < num_traders; i++) {
-        if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
-            char msg[] = MARKET_OPEN_MSG;
-            write(exchange_pool->fds_set[i], msg, strlen(msg));
-            if (kill(pids[i], SIGUSR1) == -1) {
-                perror("signal: kill failed");
-                exit(1);
-            }
-        } else {
-            perror("file descriptor not ready");
-            exit(4);
+        // if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
+        char msg[] = MARKET_OPEN_MSG;
+        write(exchange_pool->fds_set[i], msg, strlen(msg));
+        if (kill(pids[i], SIGUSR1) == -1) {
+            perror("signal: kill failed");
+            exit(1);
         }
+        // } else {
+        //     perror("file descriptor not ready");
+        //     exit(4);
+        // }
     }
     
     // register signal handler
@@ -230,7 +230,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     int success_order = 1;
     order_node order = NULL;
 
-    // printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
+    printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
 
     // check the read descriptor is ready
     int num_bytes = read(fd_trader, line, sizeof(line));
