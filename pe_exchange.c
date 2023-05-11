@@ -131,34 +131,6 @@ int main(int argc, char ** argv) {
         }
         usleep(50000); // give some time for trader to connect and suspend
         connect_pipes(i);
-
-        int status = -1;
-        int trader_id = -1;
-        
-        // wait for all children process to exit
-        while ( (pid = waitpid(-1, &status, WNOHANG)) > 0) {
-            for (int i = 0; i < num_traders; i++) {
-                if (pids[i] == pid) {
-                    trader_id = i;
-                    // close(trader_pool->fds_set[i]);
-                    // close(exchange_pool->fds_set[i]);
-                    FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
-                    FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
-                    break;
-                }
-            }
-            printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
-        }
-        
-        if (pid == -1) {
-            if (errno == ECHILD) {
-                all_children_terminated = 1;
-            }
-            else if (errno != EINTR) {
-                perror("waitpid error");
-                exit(6);
-            }
-        }
     }
 
     // -------------------------- MARKET OPEN --------------------------
@@ -209,6 +181,36 @@ int main(int argc, char ** argv) {
         sigusr1_received = 0;
         sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
         reset_fds();
+
+        
+        pid_t pid = 0;
+        int status = -1;
+        int trader_id = -1;
+
+        // wait for all children process to exit
+        while ( (pid = waitpid(-1, &status, WNOHANG)) > 0) {
+            for (int i = 0; i < num_traders; i++) {
+                if (pids[i] == pid) {
+                    trader_id = i;
+                    // close(trader_pool->fds_set[i]);
+                    // close(exchange_pool->fds_set[i]);
+                    FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
+                    FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
+                    break;
+                }
+            }
+            printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
+        }
+
+        if (pid == -1) {
+            if (errno == ECHILD) {
+                all_children_terminated = 1;
+            }
+            else if (errno != EINTR) {
+                perror("waitpid error");
+                exit(6);
+            }
+        }
     }
 
     // disconnect
