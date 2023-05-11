@@ -165,6 +165,7 @@ int main(int argc, char ** argv) {
                     match_order();                    
                     report_order_book(); 
                 }
+                usleep(10000);
             } 
             reset_fds();
         }
@@ -409,15 +410,14 @@ void match_order() {
     order_node highest_buy = NULL;
     order_node lowest_sell = NULL;
     order_node head_curr = NULL;
-
+    
     for (int i = 0; i < product_num; i++) {
         book = orderbook[i];
         int cont = 1;
         while (cont) {
-            highest_buy = NULL;
-            lowest_sell = NULL;
+            lowest_sell = book->tail_order;
+        
             head_curr = book->head_order;
-            
             while (head_curr != NULL) {
                 if (head_curr->order_type == BUY_ORDER) {
                     highest_buy = head_curr;
@@ -426,30 +426,19 @@ void match_order() {
                 head_curr = head_curr->next;
             }
             
-            order_node tail_curr = book->tail_order; 
-            while (tail_curr != NULL) {
-                if (tail_curr->order_type == SELL_ORDER) {
-                    lowest_sell = tail_curr;
-                    order_node tmp = tail_curr->prev; // earliest lowest price
-                    while (tmp != NULL && tmp->order_type == SELL_ORDER 
-                            && (tail_curr->price == tmp->price)) {
-                        lowest_sell = tmp;
-                        tmp = tmp->prev;
-                    }
-                    break;
-                }
-                tail_curr = tail_curr->prev;
+            order_node tmp = lowest_sell->prev; // find earliest lowest price
+            while (tmp != NULL && tmp->order_type == SELL_ORDER 
+                    && (lowest_sell->price == tmp->price)) {
+                lowest_sell = tmp;
+                tmp = tmp->prev;
             }
             
             // match success
             if (highest_buy != NULL && lowest_sell != NULL 
                     && (highest_buy->price >= lowest_sell->price)) {
                 match_order_report(highest_buy, lowest_sell);
-                cont = 1;
-            } else { // match fail
-                cont = 0;
-            }
-        }
+            } else cont = 0;
+        } 
     }
     return;
 }

@@ -93,16 +93,17 @@ order_node create_order(int type, int time, int pid, int trader_id, int order_id
 }
 
 // update value if unique
-void check_unique_price(orderbook_node book, int order_type, int price, int val) {
+void check_unique_price(orderbook_node book, order_node node, int val) {
     order_node curr = book->head_order;
     while(curr != NULL) {
-        if ((curr->order_type == order_type) && (curr->price == price))
+        if ((curr != node) && (curr->order_type == node->order_type) 
+            && (curr->price == node->price))
             return; // found same price
         curr = curr->next;
     } 
-    if (order_type == BUY_ORDER)
+    if (node->order_type == BUY_ORDER)
         book->buy_level += val;
-    else if (order_type == SELL_ORDER)
+    else
         book->sell_level += val;
 }
 
@@ -114,9 +115,10 @@ void add_order(order_node node) {
         exit(6);
     }
 
+    check_unique_price(book, node, 1);
+
     if (book->head_order == NULL) {
         book->head_order = node;
-        book->tail_order = node;
     } 
     else {
         order_node tmp = book->head_order; 
@@ -128,16 +130,19 @@ void add_order(order_node node) {
                 if (tmp->prev != NULL)
                     tmp->prev->next = node; 
                 tmp->prev = node;
-                return;
+                break;
+            }
+            if (tmp->next == NULL) { // last node
+                tmp->next = node;
+                node->prev = tmp;
             }
             tmp = tmp->next;
         }
-        book->tail_order->next = node;
-        node->prev = book->tail_order;
-        book->tail_order = node;
     }
+    if (node->order_type == SELL_ORDER && 
+            (book->tail_order == NULL || book->tail_order->price >= node->price))
+        book->tail_order = node;
 
-    check_unique_price(book, node->order_type, node->price, 1);
     return;
 }
 
@@ -147,10 +152,10 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
         curr = orderbook[i]->head_order;
         while (curr != NULL) {
             if (curr->trader_id == trader_id && curr->order_id == order_id) {
-                check_unique_price(orderbook[i], curr->order_type, curr->price, -1);
+                check_unique_price(orderbook[i], curr, -1);
                 curr->qty = new_qty;
                 curr->price = new_price;
-                check_unique_price(orderbook[i], curr->order_type, curr->price, 1);
+                check_unique_price(orderbook[i], curr, 1);
                 return curr;
             }
             curr = curr->next;
