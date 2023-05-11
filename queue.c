@@ -66,9 +66,10 @@ orderbook_node get_orderbook_by_product(char * product) {
     return NULL;
 }
 
-order_node create_order(int type, int pid, int trader_id, int order_id, char *product, int qty, int price) {
+order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price) {
     order_node node = (order_node) malloc(sizeof(struct linkedList));
     node->order_type = type;
+    node->time = time;
     node->pid = pid;
     node->trader_id = trader_id;
     node->order_id = order_id;
@@ -125,6 +126,10 @@ void add_order(order_node node) {
     return;
 }
 
-void remove_order(int trader_id, int order_id) {
+void amend_order(int trader_id, int order_id, int new_qty, int new_price) {
+    // TODO: check buy/sell_level, amend order
+}
+
+void cancel_order(int trader_id, int order_id) {
     // TODO: check buy/sell_level; free mem
 }

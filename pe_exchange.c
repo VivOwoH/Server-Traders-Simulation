@@ -9,16 +9,16 @@
 int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
-int ** trader_productQTY_index;
-int * trader_fee_index;
+int ** trader_productQTY_index; // number of each product held per trader
+int * trader_fee_index; // money held per trader
 int total_ex_fee = 0;
 pid_t * pids;
-struct fd_pool ex_fds;
-struct fd_pool tr_fds;
+struct fd_pool ex_fds; // exchange file descriptors
+struct fd_pool tr_fds; // trader file descriptors
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
 int all_children_terminated = 0;
-// int sigchld_received = 0;
+int order_time = 0; // orders from earliest to latest
 int sigusr1_received = 0;
 
 
@@ -243,14 +243,16 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
                 // printf("%s\n", write_line);
-                add_order(create_order(BUY_ORDER, pids[id], id, order_id, product, qty, price));
+                add_order(create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price));
+                order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
             sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
                 // printf("%s\n", write_line);
-                add_order(create_order(SELL_ORDER, pids[id], id, order_id, product, qty, price));
+                add_order(create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price));
+                order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
@@ -276,7 +278,94 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
 }
 
 void match_order() {
-    // TODO: match order
+    for (int i = 0; i < product_num; i++) {
+        orderbook_node book = orderbook[i];
+        order_node highest_buy = NULL;
+        order_node lowest_sell = NULL;
+
+        order_node head_curr = book->head_order;
+        while (head_curr != NULL) {
+            if (head_curr->order_type == BUY_ORDER) {
+                highest_buy = head_curr;
+                break;
+            }
+            head_curr = head_curr->next;
+        }
+        
+        order_node tail_curr = book->tail_order; 
+        while (tail_curr != NULL) {
+            if (tail_curr->order_type == SELL_ORDER) {
+                lowest_sell = tail_curr;
+                order_node tmp = tail_curr->prev; // earliest lowest price
+                while (tmp != NULL && tmp->order_type == SELL_ORDER 
+                        && (tail_curr->price == tmp->price)) {
+                    lowest_sell = tmp;
+                    tmp = tmp->prev;
+                }
+                break;
+            }
+            tail_curr = tail_curr->prev;
+        }
+
+        // match success
+        if (highest_buy != NULL && lowest_sell != NULL 
+            && (highest_buy->price >= lowest_sell->price)) {
+            // matching price is the price of the older order
+            // charge last trader 1% of qty*price
+            int buy_fd = exchange_pool->fds_set[highest_buy->trader_id];
+            int sell_fd = exchange_pool->fds_set[lowest_sell->trader_id];
+            int final_price = -1;
+            int transaction_fee = -1;
+            int buy_fill_qty = highest_buy->qty;
+            int sell_fill_qty = lowest_sell->qty;
+
+            // -------------------- Fill + Amend -----------------------
+            if (highest_buy->qty > lowest_sell->qty) {
+                // sell is fullfilled, amend buy
+                buy_fill_qty = lowest_sell->qty;
+                cancel_order(lowest_sell->trader_id, lowest_sell->order_id);
+                amend_order(highest_buy->trader_id, highest_buy->order_id, 
+                            (highest_buy->qty - buy_fill_qty), highest_buy->price);
+            } else if (highest_buy->qty < lowest_sell->qty) {
+                // buy is fullfilled, amend sell
+                sell_fill_qty = highest_buy->qty;
+                cancel_order(highest_buy->trader_id, highest_buy->order_id);
+                amend_order(lowest_sell->trader_id, lowest_sell->order_id, 
+                            (lowest_sell->qty - sell_fill_qty), lowest_sell->price);
+            } else {
+                cancel_order(highest_buy->trader_id, highest_buy->order_id);
+                cancel_order(lowest_sell->trader_id, lowest_sell->order_id);
+            }
+
+            // -------------------- value + fee -----------------------
+            if (highest_buy->time > lowest_sell->time) {
+                // match sell, new=buy
+                final_price = lowest_sell->price * sell_fill_qty;
+                transaction_fee = (int) (final_price * 0.01 + 0.5); 
+                                                    // fast round cast; not valid for neg number
+                printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
+                    LOG_PREFIX, lowest_sell->order_id, lowest_sell->trader_id, 
+                    highest_buy->order_id, highest_buy->trader_id, final_price, transaction_fee);
+            } else {
+                // match buy, new=sell
+                final_price = highest_buy->price * buy_fill_qty;
+                transaction_fee = (int) (final_price * 0.01 + 0.5);
+                printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
+                    LOG_PREFIX, highest_buy->order_id, highest_buy->trader_id, 
+                    lowest_sell->order_id, lowest_sell->trader_id, final_price, transaction_fee);
+            }
+            
+            // -------------------- write + sig -----------------------
+            char write_line[BUFFLEN], write_line_2[BUFFLEN];
+            snprintf(write_line, BUFFLEN, FILL_MSG, highest_buy->order_id, buy_fill_qty);
+            write(buy_fd, write_line, strlen(write_line));
+            kill(highest_buy->pid, SIGUSR1);
+
+            snprintf(write_line_2, BUFFLEN, FILL_MSG, lowest_sell->order_id, sell_fill_qty);
+            write(sell_fd, write_line_2, strlen(write_line_2));
+            kill(lowest_sell->pid, SIGUSR1);
+        }
+    }
     return;
 }
 

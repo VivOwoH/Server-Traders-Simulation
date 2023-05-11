@@ -24,6 +24,7 @@ void dequeue();
 struct linkedList
 {
     int order_type;
+    int time;
     int pid;
     int trader_id;
     int order_id;
@@ -46,8 +47,9 @@ typedef struct product_orders *orderbook_node;
 extern orderbook_node * orderbook;
 
 void create_orderbook(int product_num, char ** product_ls);
-order_node create_order(int type, int pid, int trader_id, int order_id, char *product, int qty, int price);
+order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price);
 void add_order(order_node node);
-void remove_order(int trader_id, int order_id);
+void amend_order(int trader_id, int order_id, int new_qty, int new_price);
+void cancel_order(int trader_id, int order_id);
 
 #endif
