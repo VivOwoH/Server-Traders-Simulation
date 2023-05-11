@@ -92,9 +92,22 @@ order_node create_order(int type, int time, int pid, int trader_id, int order_id
     return node;
 }
 
+// update value if unique
+void check_unique_price(orderbook_node book, int order_type, int price, int val) {
+    order_node curr = book->head_order;
+    while(curr != NULL) {
+        if ((curr->order_type == order_type) && (curr->price == price))
+            return; // found same price
+        curr = curr->next;
+    } 
+    if (order_type == BUY_ORDER)
+        book->buy_level += val;
+    else if (order_type == SELL_ORDER)
+        book->sell_level += val;
+}
+
 // sorted by price-time priority
 void add_order(order_node node) {
-    int unique = 1;
     orderbook_node book = get_orderbook_by_product(node->product);
     if (book == NULL) {
         perror("empty orderbook");
@@ -107,7 +120,7 @@ void add_order(order_node node) {
     } 
     else {
         order_node tmp = book->head_order; 
-        while(tmp->next != NULL) {
+        while(tmp != NULL) {
             if (node->price > tmp->price) {
                 book->head_order = (tmp==book->head_order) ? node : book->head_order;
                 node->next = tmp;
@@ -117,37 +130,32 @@ void add_order(order_node node) {
                 tmp->prev = node;
                 return;
             }
-            unique = (node->price == tmp->price) ? 0 : unique;
             tmp = tmp->next;
         }
-        // tmp = last node
-        if (node->price > tmp->price) {
-            book->head_order = (tmp==book->head_order) ? node : book->head_order;
-            node->next = tmp;
-            node->prev = tmp->prev;
-            if (tmp->prev != NULL)
-                tmp->prev->next = node; 
-            tmp->prev = node;
-        } else {
-            book->tail_order = (tmp==book->tail_order) ? node : book->tail_order;
-            unique = (node->price == tmp->price) ? 0 : unique;
-            tmp->next = node;
-            node->prev = tmp;
-        }
+        book->tail_order->next = node;
+        node->prev = book->tail_order;
+        book->tail_order = node;
     }
-    // update levels for order book
-    if (unique) {
-        if (node->order_type == BUY_ORDER) 
-            book->buy_level++;
-        else if (node->order_type == SELL_ORDER)
-            book->sell_level++;
-    }
+
+    check_unique_price(book, node->order_type, node->price, 1);
     return;
 }
 
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) {
-    // TODO: check buy/sell_level, amend order
-
+    order_node curr = NULL;
+    for (int i = 0; i < orderbook_size; i++) {
+        curr = orderbook[i]->head_order;
+        while (curr != NULL) {
+            if (curr->trader_id == trader_id && curr->order_id == order_id) {
+                check_unique_price(orderbook[i], curr->order_type, curr->price, -1);
+                curr->qty = new_qty;
+                curr->price = new_price;
+                check_unique_price(orderbook[i], curr->order_type, curr->price, 1);
+                return curr;
+            }
+            curr = curr->next;
+        }
+    }
     return NULL;
 }
 
