@@ -20,7 +20,7 @@ int all_children_terminated = 0;
 int order_time = 0; // orders from earliest to latest
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    printf("exchange received sigusr1 from %d\n", info->si_pid);
+    // printf("exchange received sigusr1 from %d\n", info->si_pid);
 
     int trader_id = -1;
     for (int i = 0; i < num_traders; i++) {
@@ -132,7 +132,7 @@ int main(int argc, char ** argv) {
     sigemptyset(&mask); // clears all signals in mask
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
-    while (!all_children_terminated || head_sig != NULL) {
+    while (!all_children_terminated) {
         sigprocmask(SIG_BLOCK, &mask, NULL); // block
         
         struct timeval timeout;
@@ -327,6 +327,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             perror("signal: kill failed");
             exit(1);
         }
+        usleep(10000);
 
         if (success_order)
             market_alert(pids[id], order);
@@ -346,6 +347,7 @@ void market_alert(int pid, order_node order) {
     for (int i = 0; i < num_traders; i++) {
         if (pid != pids[i] && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             write(exchange_pool->fds_set[i], market_line, strlen(market_line));
+            usleep(10000);
             if (kill(pids[i], SIGUSR1)==-1) {
                 perror("signal: kill failed");
                 exit(1);
