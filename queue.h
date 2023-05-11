@@ -46,6 +46,7 @@ extern orderbook_node * orderbook;
 
 handler_t *Signal(int signum, handler_t *handler); // [1] signal to catch;
                                                    // [2] pointer to the function that will be called when the signal is received
+signal_node create_signal(int trader_id);
 void enqueue(signal_node node);
 void dequeue();
 void create_orderbook(int num_traders, int product_num, char ** product_ls);

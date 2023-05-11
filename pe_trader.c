@@ -16,13 +16,6 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
     return;
 }
 
-void send_sigusr1_val(pid_t pid, int value) {
-    union sigval sigv;
-    sigv.sival_int = value;
-
-    sigqueue(pid, SIGUSR1, sigv);
-}
-
 // ----------------------------------------------------------
 // -------------------------- MAIN --------------------------
 // ----------------------------------------------------------
@@ -116,7 +109,7 @@ int event() {
             snprintf(write_line, BUFFLEN, BUY_MSG, order_id, product, qty, price);
             write(fd_write, write_line, strlen(write_line));
 
-            send_sigusr1_val(parent_pid, trader_id);
+            kill(parent_pid, SIGUSR1);
         }
     } 
     else if (strcmp(arg0, "ACCEPTED") == 0) {

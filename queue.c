@@ -23,6 +23,13 @@ handler_t* Signal(int signum, handler_t *handler) {
     return old_action.sa_sigaction;
 }
 
+signal_node create_signal(int trader_id) {
+    signal_node node = (signal_node) malloc(sizeof(struct queue));
+    node->trader_id = trader_id;
+    node->next = NULL;
+    return node;
+}
+
 void enqueue(signal_node node) {
     if (head_sig == NULL) {
         head_sig = node;

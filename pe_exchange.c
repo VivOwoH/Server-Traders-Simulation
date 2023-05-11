@@ -24,13 +24,21 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
     // printf("exchange received sigusr1 from %d\n", info->si_pid);
     sigusr1_received++;
 
-    signal_node node = (signal_node) malloc(sizeof(struct queue));
-    node->trader_id = info->si_value.sival_int;
-    node->next = NULL;
+    int trader_id = -1;
+    for (int i = 0; i < num_traders; i++) {
+        if (pids[i] == info->si_pid) {
+            trader_id = i;
+            break;
+        }
+    }
+    if (trader_id == -1) {
+        perror("[sigaction] cannot find trader_id");
+        exit(1);
+    }
+    signal_node node = create_signal(trader_id);
     enqueue(node);
-    
-    sigusr1_received--;
 
+    sigusr1_received--;
     return;
 }
 
