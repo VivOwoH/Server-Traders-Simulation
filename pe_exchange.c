@@ -174,7 +174,7 @@ int main(int argc, char ** argv) {
         int trader_id = -1;
         
         // wait for all children process to exit
-        while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        while((pid = waitpid(-1, &status, 0)) > 0) {
             for (int i = 0; i < num_traders; i++) {
                 if (pids[i] == pid) {
                     trader_id = i;
