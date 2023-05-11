@@ -21,7 +21,7 @@ int sigusr1_received = 0;
 
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    // puts("exchange received sigusr1");
+    printf("exchange received sigusr1 from %d\n", info->si_value.sival_int);
     sigusr1_received = 1;
 
     signal_node node = (signal_node) malloc(sizeof(struct queue));
@@ -134,6 +134,7 @@ int main(int argc, char ** argv) {
             int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
             int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
             
+            sigusr1_received = 0;
             sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
             
             if (tr_num == 0 || ex_num == 0) {
@@ -159,7 +160,6 @@ int main(int argc, char ** argv) {
                 }
             } 
             reset_fds();
-            sigusr1_received = 0;
         }
 
         pid_t pid = 0;
@@ -448,10 +448,10 @@ void report_order_book() {
         for (int j = 0; j < product_num; j++) {
             orderbook_node book = orderbook[j];
             if (j == product_num-1)
-                printf("%s %d ($%d)\n", book->product, 
+                printf("%s\t%d ($%d)\n", book->product, 
                         book->trader_qty_index[i], book->trader_fee_index[i]);
             else 
-                printf("%s %d ($%d), ", book->product, 
+                printf("%s\t%d ($%d), ", book->product, 
                         book->trader_qty_index[i], book->trader_fee_index[i]);
         }  
     }
