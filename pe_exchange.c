@@ -111,6 +111,7 @@ int main(int argc, char ** argv) {
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             char msg[] = MARKET_OPEN_MSG;
             write(exchange_pool->fds_set[i], msg, strlen(msg));
+            usleep(10000);
             if (kill(pids[i], SIGUSR1) == -1) {
                 perror("signal: kill failed");
                 exit(1);
@@ -405,6 +406,7 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     char write_line[BUFFLEN], write_line_2[BUFFLEN];
     snprintf(write_line, BUFFLEN, FILL_MSG, highest_buy->order_id, buy_fill_qty);
     write(buy_fd, write_line, strlen(write_line));
+    usleep(10000);
     if (kill(highest_buy->pid, SIGUSR1)==-1) {
         perror("signal: kill failed");
         exit(1);
@@ -412,6 +414,7 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
 
     snprintf(write_line_2, BUFFLEN, FILL_MSG, lowest_sell->order_id, sell_fill_qty);
     write(sell_fd, write_line_2, strlen(write_line_2));
+    usleep(10000);
     if (kill(lowest_sell->pid, SIGUSR1)==-1) {
         perror("signal: kill failed");
         exit(1);
