@@ -17,26 +17,48 @@ struct fd_pool tr_fds; // trader file descriptors
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
 int all_children_terminated = 0;
+int pid_wip[2] = {0};
 int order_time = 0; // orders from earliest to latest
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
     // printf("exchange received sigusr1 from %d\n", info->si_pid);
-
-    int trader_id = -1;
+    pid_wip[0] = info->si_pid;
     for (int i = 0; i < num_traders; i++) {
-        if (pids[i] == info->si_pid) {
-            trader_id = i;
+        if (pids[i] == pid_wip[0]) {
+            pid_wip[1] = i;
             break;
         }
     }
-    if (trader_id == -1) {
-        perror("[sigaction] cannot find trader_id");
-        exit(1);
-    }
-    signal_node node = create_signal(trader_id);
-    enqueue(node);
-
     return;
+}
+
+void sigchld_hanlder(int s, siginfo_t *info, void *context) {
+    pid_t pid = 0;
+    int status = -1;
+    int trader_id = -1;
+    
+    // wait for all children process to exit
+    while((pid = waitpid(-1, &status, 0)) > 0) {
+        for (int i = 0; i < num_traders; i++) {
+            if (pids[i] == pid) {
+                trader_id = i;
+                FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
+                FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
+                break;
+            }
+        }
+        printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
+    }
+
+    if (pid == -1) {
+        if (errno == ECHILD) {
+            all_children_terminated = 1;
+        }
+        else if (errno != EINTR) {
+            perror("waitpid error");
+            exit(6);
+        }
+    }
 }
 
 void reset_fds() {
@@ -127,7 +149,7 @@ int main(int argc, char ** argv) {
     sigset_t mask;
 
     Signal(SIGUSR1, sigusr1_handler);
-    // Signal(SIGCHLD, sigchld_handler); 
+    Signal(SIGCHLD, sigchld_hanlder); 
 
     sigemptyset(&mask); // clears all signals in mask
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
@@ -135,65 +157,28 @@ int main(int argc, char ** argv) {
     while (!all_children_terminated) {
         sigprocmask(SIG_BLOCK, &mask, NULL); // block
         
-        struct timeval timeout;
-        // Set the timeout value to 5 seconds
-        timeout.tv_sec = 5;
-        timeout.tv_usec = 0;
-        
         // wait for any fds to become ready
-        int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
-        int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
+        int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
+        int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, NULL);
         
-        sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
-        
-        if (tr_num == 0 || ex_num == 0) {
-            perror("Select timed out");
-            exit(4);
-        } else if ((tr_num == -1 || ex_num == -1) && errno != EINTR) {
+        if (tr_num == 0 || ex_num == 0 || 
+            tr_num == -1 || ex_num == -1) {
             perror("Select failed");
             exit(4);
-        } else if (head_sig != NULL) {
+        } else {
             int success = 0;
-            if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
-                    && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
-                success = rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
-                            exchange_pool->fds_set[head_sig->trader_id]);
+            if (FD_ISSET(trader_pool->fds_set[pid_wip[1]], &trader_pool->rfds) 
+                    && FD_ISSET(exchange_pool->fds_set[pid_wip[1]], &exchange_pool->rfds)) {
+                success = rw_trader(pid_wip[1], trader_pool->fds_set[pid_wip[1]], exchange_pool->fds_set[pid_wip[1]]);
             }
-            dequeue();
 
             if (success) {
                 match_order();                    
                 report_order_book();
             }
         } 
+        sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
         reset_fds();
-
-        pid_t pid = 0;
-        int status = -1;
-        int trader_id = -1;
-        
-        // wait for all children process to exit
-        while((pid = waitpid(-1, &status, 0)) > 0) {
-            for (int i = 0; i < num_traders; i++) {
-                if (pids[i] == pid) {
-                    trader_id = i;
-                    FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
-                    FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
-                    break;
-                }
-            }
-            printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
-        }
-
-        if (pid == -1) {
-            if (errno == ECHILD) {
-                all_children_terminated = 1;
-            }
-            else if (errno != EINTR) {
-                perror("waitpid error");
-                exit(6);
-            }
-        }
     }
 
     // disconnect
@@ -273,77 +258,63 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-            puts("i reach here buy");
-            if (valid_check(id, BUY, order_id, product, qty, price)) {
+            success_order = valid_check(id, BUY, order_id, product, qty, price);
+
+            if (success_order) {
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
-                printf("%s\n", write_line);
                 write(fd_exchange, write_line, strlen(write_line));
-                kill(pids[id], SIGUSR1);
-                market_alert(pids[id], order);
-            } else {
-                success_order = 0;
-                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-                kill(pids[id], SIGUSR1);
             }
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-            puts("i reach here sell");
-            if (valid_check(id, SELL, order_id, product, qty, price)) {
+            success_order = valid_check(id, SELL, order_id, product, qty, price);
+
+            if (success_order) {
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
-                printf("%s\n", write_line);
                 write(fd_exchange, write_line, strlen(write_line));
-                kill(pids[id], SIGUSR1);
-                market_alert(pids[id], order);
-            } else {
-                success_order = 0;
-                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-                kill(pids[id], SIGUSR1);
             }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
+            success_order = valid_check(id, AMEND, order_id, product, qty, price);
 
-            if (valid_check(id, AMEND, order_id, product, qty, price)) {
+            if (success_order) {
                 order = amend_order(id, order_id, qty, price);
                 write(fd_exchange, write_line, strlen(write_line));
-                kill(pids[id], SIGUSR1);
-                market_alert(pids[id], order);
-            } else {
-                success_order = 0;
-                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-                kill(pids[id], SIGUSR1);
             }
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
                     sscanf(line, CANCL_MSG, &order_id) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
-            if (valid_check(id, CANCEL, order_id, product, qty, price)) {
+            success_order = valid_check(id, CANCEL, order_id, product, qty, price);
+
+            if (success_order) {
                 order = cancel_order(id, order_id);
                 write(fd_exchange, write_line, strlen(write_line));
-                kill(pids[id], SIGUSR1);
-                market_alert(pids[id], order);
-            } else {
-                success_order = 0;
-                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-                kill(pids[id], SIGUSR1);
-            }
+            } 
         }
         else { // invalid command
-            puts("reach invalid");
             success_order = 0;
-            write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-            kill(pids[id], SIGUSR1);
         }
-        puts("did it return?");
+
+        if (!success_order)
+            write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+
+        if (kill(pids[id], SIGUSR1) == -1) {
+            perror("signal: kill failed");
+            exit(1);
+        }
+
+        if (success_order)
+            market_alert(pids[id], order);
     }
     return success_order;
 }
@@ -621,13 +592,6 @@ void free_mem() {
     free(pids);
     free(trader_pool->fds_set);
     free(exchange_pool->fds_set);
-
-    signal_node tmp = NULL;
-    while (head_sig != NULL) {
-       tmp = head_sig;
-       head_sig = head_sig->next;
-       free(tmp);
-    }
 
     for (int i = 0; i < product_num; i++) {
         orderbook_node book = orderbook[i];

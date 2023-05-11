@@ -1,6 +1,5 @@
 #include "queue.h"
 
-signal_node head_sig = NULL;
 orderbook_node * orderbook;
 int orderbook_size = 0;
 
@@ -9,11 +8,11 @@ handler_t* Signal(int signum, handler_t *handler) {
     struct sigaction action = {0}; 
     struct sigaction old_action = {0};
 
-    old_action.sa_flags = SA_SIGINFO;
-    action.sa_flags = SA_SIGINFO; 
+    action.sa_flags = SA_SIGINFO | SA_RESTART; 
     action.sa_sigaction = handler; // sa_sigaction (not sa_handler) 
                             // specifies the signal-handling function for signum 
     sigemptyset(&action.sa_mask); // block signals of type currently being processed
+    sigaddset(&action.sa_mask, SIGUSR1);
 
     if (sigaction(signum, &action, &old_action) == -1) {
         perror("sigaction error");
@@ -21,36 +20,6 @@ handler_t* Signal(int signum, handler_t *handler) {
     }
     
     return old_action.sa_sigaction;
-}
-
-signal_node create_signal(int trader_id) {
-    signal_node node = (signal_node) malloc(sizeof(struct queue));
-    node->trader_id = trader_id;
-    node->next = NULL;
-    return node;
-}
-
-void enqueue(signal_node node) {
-    if (head_sig == NULL) {
-        head_sig = node;
-    } else {
-        signal_node tmp = head_sig; 
-        while(tmp->next != NULL){
-            tmp = tmp->next; 
-        }
-        tmp->next = node; 
-    }
-    return;
-}
-
-void dequeue() {
-    if (head_sig == NULL)
-        return;
-
-    signal_node tmp = head_sig;
-    head_sig = head_sig->next;
-    
-    free(tmp);
 }
 
 void create_orderbook(int num_traders, int product_num, char ** product_ls) {
