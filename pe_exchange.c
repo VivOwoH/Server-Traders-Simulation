@@ -103,7 +103,7 @@ int main(int argc, char ** argv) {
             perror("execv"); // If exec success it will never return
             exit(3);
         }
-        usleep(30000); // give some time for trader to connect and suspend
+        sleep(1); // give some time for trader to connect and suspend
         connect_pipes(i);
     }
 
