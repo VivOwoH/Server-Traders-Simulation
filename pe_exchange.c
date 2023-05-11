@@ -9,7 +9,7 @@
 int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
-int ** trader_productQTY_index; // number of each product held per trader
+int ** trader_product_qty_index; // number of each product held per trader
 int * trader_fee_index; // money held per trader
 int total_ex_fee = 0;
 pid_t * pids;
@@ -64,13 +64,15 @@ int main(int argc, char ** argv) {
     printf("%s Starting\n", LOG_PREFIX);
 
     parse_products(argv[1]);
-    create_orderbook(product_num, product_ls); // each product has a orderbook
-
+    
     num_traders = argc - 2;
     trader_pool->maxfd = 0;
     exchange_pool->maxfd = 0;
     trader_pool->fds_set = malloc(sizeof(int) * (num_traders)); 
     exchange_pool->fds_set = malloc(sizeof(int) * (num_traders)); 
+
+    ini_trader_info();
+    create_orderbook(product_num, product_ls); // each product has a orderbook
 
     // launch binaries (fork + exec)
     // each child exchange has a ex_fd that connects to the corresponding tr_fd
@@ -135,6 +137,8 @@ int main(int argc, char ** argv) {
             int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
             int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
             
+            sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
+            
             if (tr_num == 0 || ex_num == 0) {
                 perror("Select timed out");
                 exit(4);
@@ -159,7 +163,6 @@ int main(int argc, char ** argv) {
             } 
             reset_fds();
             sigusr1_received = 0;
-            sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
         }
 
         pid_t pid = 0;
@@ -273,6 +276,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 write(fd_exchange, write_line, strlen(write_line));
         }
         else { // invalid command
+        // TODO: invalid qty
             success_order = 0;
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
         }
@@ -436,7 +440,17 @@ void report_order_book() {
     }
     // ----------- POSITION -------------
     printf("%s\t--POSITIONS--\n", LOG_PREFIX);
-    //TODO: positions
+    for (int i = 0; i < num_traders; i++) {
+        printf("%s Trader %d: ", LOG_PREFIX, i);
+        for (int j = 0; j < product_num; j++) {
+            if (j == product_num-1)
+                printf("%s %d ($%d)\n", product_ls[i], 
+                        trader_product_qty_index[i][j], trader_fee_index[i]);
+            else 
+                printf("%s %d ($%d), ", product_ls[i], 
+                        trader_product_qty_index[i][j], trader_fee_index[i]);
+        }  
+    }
     return;
 }
 
@@ -467,6 +481,15 @@ void parse_products(char* filename) {
     }
 
     fclose(fp);
+}
+
+void ini_trader_info() {
+    trader_fee_index = calloc(num_traders, sizeof(int));
+
+    trader_product_qty_index = malloc(product_num * sizeof(int*));
+    for (int i = 0; i < product_num; i++) {
+        trader_product_qty_index[i] = calloc(num_traders, sizeof(int)); // num of product per trader
+    }
 }
 
 // create pipes for 1 trader
@@ -519,6 +542,7 @@ void connect_pipes(int i) {
 }
 
 void free_mem() {
+    // TODO: free trader info
     for (int i = 0; i < product_num; i++) {
         free(product_ls[i]);
     }
