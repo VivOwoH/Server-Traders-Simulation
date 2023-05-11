@@ -34,11 +34,17 @@ struct linkedList
     struct linkedList *next;
 };
 typedef struct linkedList *order_node;
-extern order_node head_order;
 
-extern int buy_level;
-extern int sell_level;
+struct product_orders {
+    char *product;
+    order_node head_order;
+    int buy_level;
+    int sell_level;
+};
+typedef struct product_orders *orderbook_node;
+extern orderbook_node * orderbook;
 
+void create_orderbook(int product_num, char ** product_ls);
 order_node create_order(int type, int pid, int trader_id, int order_id, char *product, int qty, int price);
 void add_order(order_node node);
 void remove_order(int trader_id, int order_id);

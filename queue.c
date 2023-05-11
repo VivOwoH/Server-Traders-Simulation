@@ -1,9 +1,9 @@
 #include "queue.h"
 
+// TODO: array of headers [product_num]
 signal_node head_sig = NULL;
-order_node head_order = NULL;
-int buy_level = 0;
-int sell_level = 0;
+orderbook_node * orderbook;
+int orderbook_size = 0;
 
 // Sigaction wrapper
 handler_t* Signal(int signum, handler_t *handler) {
@@ -46,6 +46,26 @@ void dequeue() {
     free(tmp);
 }
 
+void create_orderbook(int product_num, char ** product_ls) {
+    orderbook_size = product_num;
+    orderbook = malloc(orderbook_size * sizeof(orderbook_node));
+    for (int i = 0; i < orderbook_size; i++) {
+        orderbook[i] = (orderbook_node) malloc(sizeof(struct product_orders));
+        orderbook[i]->product = product_ls[i];
+        orderbook[i]->buy_level = 0;
+        orderbook[i]->sell_level = 0;
+        orderbook[i]->head_order = NULL;
+    }
+}
+
+orderbook_node get_orderbook_by_product(char * product) {
+    for (int i = 0; i < orderbook_size; i++) {
+        if (strcmp(orderbook[i]->product, product)==0)
+            return orderbook[i];
+    }
+    return NULL;
+}
+
 order_node create_order(int type, int pid, int trader_id, int order_id, char *product, int qty, int price) {
     order_node node = (order_node) malloc(sizeof(struct linkedList));
     node->order_type = type;
@@ -64,12 +84,13 @@ order_node create_order(int type, int pid, int trader_id, int order_id, char *pr
 // sorted by price-time priority
 void add_order(order_node node) {
     int unique = 1;
+    orderbook_node book = get_orderbook_by_product(node->product);
 
-    if (head_order == NULL) {
-        head_order = node;
+    if (book->head_order == NULL) {
+        book->head_order = node;
     } 
     else {
-        order_node tmp = head_order; 
+        order_node tmp = book->head_order; 
         while(tmp->next != NULL) {
             if (node->price > tmp->price) {
                 node->next = tmp;
@@ -96,9 +117,9 @@ void add_order(order_node node) {
     // update levels for order book
     if (unique) {
         if (node->order_type == BUY_ORDER) 
-            buy_level++;
+            book->buy_level++;
         else if (node->order_type == SELL_ORDER)
-            sell_level++;
+            book->sell_level++;
     }
     return;
 }

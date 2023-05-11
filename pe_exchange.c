@@ -9,6 +9,8 @@
 int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
+int ** trader_productQTY_index;
+int * trader_fee_index;
 int total_ex_fee = 0;
 pid_t * pids;
 struct fd_pool ex_fds;
@@ -21,7 +23,7 @@ int sigusr1_received = 0;
 
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    puts("exchange received sigusr1");
+    // puts("exchange received sigusr1");
     sigusr1_received = 1;
 
     signal_node node = (signal_node) malloc(sizeof(struct queue));
@@ -63,6 +65,7 @@ int main(int argc, char ** argv) {
 
     // e.g. ./pe_exchange products.txt ./trader_a ./trader_b
     parse_products(argv[1]);
+    create_orderbook(product_num, product_ls); // each product has a orderbook
 
     num_traders = argc - 2;
     trader_pool->maxfd = 0;
@@ -277,13 +280,14 @@ void match_order() {
 }
 
 void report_order_book() {
-    printf("%s    --ORDERBOOK--\n", LOG_PREFIX);
+    printf("%s\t--ORDERBOOK--\n", LOG_PREFIX);
     // ----------- ORDERS -------------
     for (int i = 0; i < product_num; i++) {
-        printf("%s    Product: %s; Buy levels: %d; Sell levels: %d\n", 
-                LOG_PREFIX, product_ls[i], buy_level, sell_level);
+        orderbook_node book = orderbook[i];
+        printf("%s\tProduct: %s; Buy levels: %d; Sell levels: %d\n", 
+                LOG_PREFIX, book->product, book->buy_level, book->sell_level);
         
-        order_node curr = head_order;
+        order_node curr = book->head_order;
         while (curr != NULL) {
             if (strcmp(curr->product, product_ls[i])==0) {
                 int qty = curr->qty;
@@ -306,10 +310,10 @@ void report_order_book() {
                     }
                 }
 
-                printf("%s        %s %d @ $%d (%d order)\n", 
+                printf("%s\t\t%s %d @ $%d (%d order)\n", 
                     LOG_PREFIX, CMD_STRING[curr->order_type], qty, price, num_order);
                 if (sec_num_order > 0) {
-                    printf("%s        %s %d @ $%d (%d order)\n", 
+                    printf("%s\t\t%s %d @ $%d (%d order)\n", 
                         LOG_PREFIX, CMD_STRING[1-curr->order_type], sec_qty, 
                         sec_price, sec_num_order); // buy=0; sell=1
                 }
@@ -321,7 +325,7 @@ void report_order_book() {
         }
     }
     // ----------- POSITION -------------
-    printf("%s    --POSITIONS--\n", LOG_PREFIX);
+    printf("%s\t--POSITIONS--\n", LOG_PREFIX);
     //TODO: positions
     return;
 }
@@ -421,10 +425,15 @@ void free_mem() {
        free(tmp);
     }
 
-    order_node tmp2 = NULL;
-    while (head_order != NULL) {
-       tmp2 = head_order;
-       head_order = head_order->next;
-       free(tmp2);
+    for (int i = 0; i < product_num; i++) {
+        orderbook_node book = orderbook[i];
+        order_node tmp = NULL;
+        while (book->head_order != NULL) {
+            tmp = book->head_order;
+            book->head_order = book->head_order->next;
+            free(tmp);
+        }
+        free(orderbook[i]);
     }
+    free(orderbook);
 }
