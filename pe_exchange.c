@@ -16,12 +16,14 @@ struct fd_pool ex_fds; // exchange file descriptors
 struct fd_pool tr_fds; // trader file descriptors
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
-int children_terminated = 0;
+int all_children_terminated = 0;
+int sigusr1_received = 0;
 int pid_wip[2] = {0};
 int order_time = 0; // orders from earliest to latest
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
     printf("exchange received sigusr1 from %d\n", info->si_pid);
+    sigusr1_received = 1;
     pid_wip[0] = info->si_pid;
     for (int i = 0; i < num_traders; i++) {
         if (pids[i] == pid_wip[0]) {
@@ -48,18 +50,17 @@ void sigchld_hanlder(int s, siginfo_t *info, void *context) {
             }
         }
         printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
-        children_terminated++;
     }
 
-    // if (pid == -1) {
-    //     if (errno == ECHILD) {
-    //         children_terminated = 1;
-    //     }
-    //     else if (errno != EINTR) {
-    //         perror("waitpid error");
-    //         exit(6);
-    //     }
-    // }
+    if (pid == -1) {
+        if (errno == ECHILD) {
+            all_children_terminated = 1;
+        }
+        else if (errno != EINTR) {
+            perror("waitpid error");
+            exit(6);
+        }
+    }
 }
 
 void reset_fds() {
@@ -149,8 +150,9 @@ int main(int argc, char ** argv) {
 
     sigemptyset(&mask); // clears all signals in mask
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
+    sigaddset(&mask, SIGCHLD); // add sigchld to the set
 
-    while (children_terminated != num_traders) {
+    while (!all_children_terminated) {
         sigprocmask(SIG_BLOCK, &mask, NULL); // block
         
         // wait for any fds to become ready
@@ -163,7 +165,7 @@ int main(int argc, char ** argv) {
             exit(4);
         } else {
             int success = 0;
-            if (FD_ISSET(trader_pool->fds_set[pid_wip[1]], &trader_pool->rfds) 
+            if (sigusr1_received && FD_ISSET(trader_pool->fds_set[pid_wip[1]], &trader_pool->rfds) 
                     && FD_ISSET(exchange_pool->fds_set[pid_wip[1]], &exchange_pool->rfds)) {
                 success = rw_trader(pid_wip[1], trader_pool->fds_set[pid_wip[1]], exchange_pool->fds_set[pid_wip[1]]);
             }
@@ -173,8 +175,9 @@ int main(int argc, char ** argv) {
                 report_order_book();
             }
         } 
+        sigusr1_received = 0;
         sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
-        // reset_fds();
+        reset_fds();
     }
 
     // disconnect
