@@ -16,7 +16,7 @@ struct fd_pool ex_fds; // exchange file descriptors
 struct fd_pool tr_fds; // trader file descriptors
 struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
-int all_children_terminated = 0;
+int children_terminated = 0;
 int pid_wip[2] = {0};
 int order_time = 0; // orders from earliest to latest
 
@@ -48,17 +48,18 @@ void sigchld_hanlder(int s, siginfo_t *info, void *context) {
             }
         }
         printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
+        children_terminated++;
     }
 
-    if (pid == -1) {
-        if (errno == ECHILD) {
-            all_children_terminated = 1;
-        }
-        else if (errno != EINTR) {
-            perror("waitpid error");
-            exit(6);
-        }
-    }
+    // if (pid == -1) {
+    //     if (errno == ECHILD) {
+    //         children_terminated = 1;
+    //     }
+    //     else if (errno != EINTR) {
+    //         perror("waitpid error");
+    //         exit(6);
+    //     }
+    // }
 }
 
 void reset_fds() {
@@ -132,17 +133,12 @@ int main(int argc, char ** argv) {
     // -------------------------- MARKET OPEN --------------------------
     reset_fds();
     for (int i = 0; i < num_traders; i++) {
-        // if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
         char msg[] = MARKET_OPEN_MSG;
         write(exchange_pool->fds_set[i], msg, strlen(msg));
         if (kill(pids[i], SIGUSR1) == -1) {
             perror("signal: kill failed");
             exit(1);
         }
-        // } else {
-        //     perror("file descriptor not ready");
-        //     exit(4);
-        // }
     }
     
     // register signal handler
@@ -154,7 +150,7 @@ int main(int argc, char ** argv) {
     sigemptyset(&mask); // clears all signals in mask
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
-    while (!all_children_terminated) {
+    while (children_terminated != num_traders) {
         sigprocmask(SIG_BLOCK, &mask, NULL); // block
         
         // wait for any fds to become ready
@@ -178,7 +174,7 @@ int main(int argc, char ** argv) {
             }
         } 
         sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
-        reset_fds();
+        // reset_fds();
     }
 
     // disconnect
