@@ -17,12 +17,9 @@ struct fd_pool * exchange_pool = &ex_fds;
 struct fd_pool * trader_pool = &tr_fds;
 int all_children_terminated = 0;
 int order_time = 0; // orders from earliest to latest
-int sigusr1_received = 0;
-
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
     // printf("exchange received sigusr1 from %d\n", info->si_pid);
-    sigusr1_received++;
 
     int trader_id = -1;
     for (int i = 0; i < num_traders; i++) {
@@ -38,7 +35,6 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
     signal_node node = create_signal(trader_id);
     enqueue(node);
 
-    sigusr1_received--;
     return;
 }
 
@@ -135,27 +131,27 @@ int main(int argc, char ** argv) {
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
     while (!all_children_terminated) {
-        while (head_sig != NULL && sigusr1_received==0) {
-            sigprocmask(SIG_BLOCK, &mask, NULL); // block
-            
-            struct timeval timeout;
-            // Set the timeout value to 5 seconds
-            timeout.tv_sec = 5;
-            timeout.tv_usec = 0;
-            
-            // wait for any fds to become ready
-            int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
-            int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
-            
-            sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
-            
-            if (tr_num == 0 || ex_num == 0) {
-                perror("Select timed out");
-                exit(4);
-            } else if ((tr_num == -1 || ex_num == -1) && errno != EINTR) {
-                perror("Select failed");
-                exit(4);
-            } else {
+        sigprocmask(SIG_BLOCK, &mask, NULL); // block
+        
+        struct timeval timeout;
+        // Set the timeout value to 5 seconds
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 0;
+        
+        // wait for any fds to become ready
+        int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
+        int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
+        
+        sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
+        
+        if (tr_num == 0 || ex_num == 0) {
+            perror("Select timed out");
+            exit(4);
+        } else if ((tr_num == -1 || ex_num == -1) && errno != EINTR) {
+            perror("Select failed");
+            exit(4);
+        } else {
+            while (head_sig != NULL) {
                 int success = 0;
                 if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
                         && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
@@ -166,11 +162,12 @@ int main(int argc, char ** argv) {
 
                 if (success) {
                     match_order();                    
-                    report_order_book(); 
+                    report_order_book();
                 }
-            } 
-            reset_fds();
-        }
+            }
+            usleep(10000);
+        } 
+        reset_fds();
 
         pid_t pid = 0;
         int status = -1;
@@ -198,7 +195,6 @@ int main(int argc, char ** argv) {
                 exit(6);
             }
         }
-        usleep(10000);
     }
 
     // disconnect
