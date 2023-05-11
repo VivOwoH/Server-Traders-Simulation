@@ -54,6 +54,7 @@ void create_orderbook(int product_num, char ** product_ls) {
         orderbook[i]->buy_level = 0;
         orderbook[i]->sell_level = 0;
         orderbook[i]->head_order = NULL;
+        orderbook[i]->tail_order = NULL;
     }
 }
 
@@ -87,6 +88,7 @@ void add_order(order_node node) {
 
     if (book->head_order == NULL) {
         book->head_order = node;
+        book->tail_order = node;
     } 
     else {
         order_node tmp = book->head_order; 
@@ -95,7 +97,6 @@ void add_order(order_node node) {
                 node->next = tmp;
                 node->prev = tmp->prev;
                 tmp->prev = node;
-                tmp->next = NULL;
                 return;
             }
             unique = (node->price == tmp->price) ? 0 : unique;
@@ -103,17 +104,16 @@ void add_order(order_node node) {
         }
 
         if (node->price > tmp->price) {
+            book->head_order = (tmp==book->head_order) ? node : book->head_order;
             node->next = tmp;
             node->prev = tmp->prev;
             tmp->prev = node;
-            tmp->next = NULL;
         } else {
+            book->tail_order = (tmp==book->tail_order) ? node : book->tail_order;
             unique = (node->price == tmp->price) ? 0 : unique;
             tmp->next = node;
             node->prev = tmp;
         }
-        printf("%d\n", book->head_order->order_id);
-        printf("%d\n", book->head_order->next->order_id);
     }
     // update levels for order book
     if (unique) {

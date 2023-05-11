@@ -38,6 +38,7 @@ typedef struct linkedList *order_node;
 struct product_orders {
     char *product;
     order_node head_order;
+    order_node tail_order;
     int buy_level;
     int sell_level;
 };

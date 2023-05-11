@@ -289,7 +289,7 @@ void report_order_book() {
                 LOG_PREFIX, book->product, book->buy_level, book->sell_level);
         
         order_node curr = book->head_order;
-        if (curr == NULL) puts("null!");
+        // if (curr == NULL) puts("null!");
         while (curr != NULL) {
             int qty = curr->qty;
             int price = curr->price;
