@@ -44,8 +44,10 @@ void sigchld_hanlder(int s, siginfo_t *info, void *context) {
         for (int i = 0; i < num_traders; i++) {
             if (pids[i] == pid) {
                 trader_id = i;
-                close(trader_pool->fds_set[i]);
-                close(exchange_pool->fds_set[i]);
+                // close(trader_pool->fds_set[i]);
+                // close(exchange_pool->fds_set[i]);
+                FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
+                FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
                 break;
             }
         }
@@ -158,6 +160,7 @@ int main(int argc, char ** argv) {
         // wait for any fds to become ready
         int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
         int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, NULL);
+        printf("tr:%d ex:%d\n", tr_num, ex_num);
         
         if (tr_num == 0 || ex_num == 0 || 
             tr_num == -1 || ex_num == -1) {
@@ -177,7 +180,7 @@ int main(int argc, char ** argv) {
         } 
         sigusr1_received = 0;
         sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
-        reset_fds();
+        // reset_fds();
     }
 
     // disconnect
