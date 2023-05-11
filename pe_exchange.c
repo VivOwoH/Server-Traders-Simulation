@@ -52,15 +52,15 @@ void sigchld_hanlder(int s, siginfo_t *info, void *context) {
             }
         }
         printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
-    }
 
-    if (pid == -1) {
-        if (errno == ECHILD) {
-            all_children_terminated = 1;
-        }
-        else if (errno != EINTR) {
-            perror("waitpid error");
-            exit(6);
+        if (pid == -1) {
+            if (errno == ECHILD) {
+                all_children_terminated = 1;
+            }
+            else if (errno != EINTR) {
+                perror("waitpid error");
+                exit(6);
+            }
         }
     }
 }
