@@ -144,8 +144,6 @@ int main(int argc, char ** argv) {
         int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
         int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
         
-        sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
-        
         if (tr_num == 0 || ex_num == 0) {
             perror("Select timed out");
             exit(4);
@@ -167,6 +165,7 @@ int main(int argc, char ** argv) {
             }
         } 
         reset_fds();
+        sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
 
         pid_t pid = 0;
         int status = -1;
