@@ -20,7 +20,7 @@ int all_children_terminated = 0;
 int order_time = 0; // orders from earliest to latest
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    // printf("exchange received sigusr1 from %d\n", info->si_pid);
+    printf("exchange received sigusr1 from %d\n", info->si_pid);
 
     int trader_id = -1;
     for (int i = 0; i < num_traders; i++) {
