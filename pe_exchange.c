@@ -123,7 +123,7 @@ int main(int argc, char ** argv) {
 
     while (!all_children_terminated) {
         if (sigusr1_received) {
-            sigprocmask(SIG_BLOCK, &mask, NULL); // block
+            // sigprocmask(SIG_BLOCK, &mask, NULL); // block
             
             struct timeval timeout;
             // Set the timeout value to 5 seconds
@@ -135,12 +135,12 @@ int main(int argc, char ** argv) {
             int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
             
             sigusr1_received = 0;
-            sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
+            // sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
             
             if (tr_num == 0 || ex_num == 0) {
                 perror("Select timed out");
                 exit(4);
-            } else if ((tr_num == -1 || ex_num == -1)) {
+            } else if ((tr_num == -1 || ex_num == -1) && errno != EINTR) {
                 perror("Select failed");
                 exit(4);
             } else {
@@ -444,14 +444,14 @@ void report_order_book() {
     // ----------- POSITION -------------
     printf("%s\t--POSITIONS--\n", LOG_PREFIX);
     for (int i = 0; i < num_traders; i++) {
-        printf("%s Trader %d: ", LOG_PREFIX, i);
+        printf("%s\tTrader %d: ", LOG_PREFIX, i);
         for (int j = 0; j < product_num; j++) {
             orderbook_node book = orderbook[j];
             if (j == product_num-1)
-                printf("%s\t%d ($%d)\n", book->product, 
+                printf("%s %d ($%d)\n", book->product, 
                         book->trader_qty_index[i], book->trader_fee_index[i]);
             else 
-                printf("%s\t%d ($%d), ", book->product, 
+                printf("%s %d ($%d), ", book->product, 
                         book->trader_qty_index[i], book->trader_fee_index[i]);
         }  
     }
