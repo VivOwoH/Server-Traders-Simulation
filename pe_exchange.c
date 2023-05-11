@@ -273,64 +273,72 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-            success_order = valid_check(id, BUY, order_id, product, qty, price);
 
-            if (success_order) {
+            if (valid_check(id, BUY, order_id, product, qty, price)) {
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
+                kill(pids[id], SIGUSR1);
+                usleep(10000);
+                market_alert(pids[id], order);
+            } else {
+                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+                kill(pids[id], SIGUSR1);
             }
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-            success_order = valid_check(id, SELL, order_id, product, qty, price);
 
-            if (success_order) {
+            if (valid_check(id, SELL, order_id, product, qty, price)) {
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
+                kill(pids[id], SIGUSR1);
+                usleep(10000);
+                market_alert(pids[id], order);
+            } else {
+                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+                kill(pids[id], SIGUSR1);
             }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
-            success_order = valid_check(id, AMEND, order_id, product, qty, price);
 
-            if (success_order) {
+            if (valid_check(id, AMEND, order_id, product, qty, price)) {
                 order = amend_order(id, order_id, qty, price);
                 write(fd_exchange, write_line, strlen(write_line));
+                kill(pids[id], SIGUSR1);
+                usleep(10000);
+                market_alert(pids[id], order);
+            } else {
+                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+                kill(pids[id], SIGUSR1);
             }
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
                     sscanf(line, CANCL_MSG, &order_id) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
-            success_order = valid_check(id, CANCEL, order_id, product, qty, price);
-
-            if (success_order) {
+            if (valid_check(id, CANCEL, order_id, product, qty, price)) {
                 order = cancel_order(id, order_id);
                 write(fd_exchange, write_line, strlen(write_line));
-            } 
+                kill(pids[id], SIGUSR1);
+                usleep(10000);
+                market_alert(pids[id], order);
+            } else {
+                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+                kill(pids[id], SIGUSR1);
+            }
         }
         else { // invalid command
-            success_order = 0;
-        }
-
-        if (!success_order)
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-
-        if (kill(pids[id], SIGUSR1) == -1) {
-            perror("signal: kill failed");
-            exit(1);
-        }
-        usleep(10000);
-
-        if (success_order)
-            market_alert(pids[id], order);
+            kill(pids[id], SIGUSR1);
+        }      
     }
     return success_order;
 }
