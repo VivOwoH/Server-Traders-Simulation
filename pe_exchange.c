@@ -273,7 +273,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-
+            puts("i reach here buy");
             if (valid_check(id, BUY, order_id, product, qty, price)) {
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
@@ -292,7 +292,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-
+            puts("i reach here sell");
             if (valid_check(id, SELL, order_id, product, qty, price)) {
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
@@ -338,10 +338,12 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         }
         else { // invalid command
+            puts("reach invalid");
             success_order = 0;
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
             kill(pids[id], SIGUSR1);
-        }      
+        }
+        puts("did it return?");
     }
     return success_order;
 }
