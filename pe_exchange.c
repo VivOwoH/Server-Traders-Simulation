@@ -21,13 +21,20 @@ int sigusr1_received = 0;
 
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
+    // register signal handler
+    sigset_t mask;
+    sigemptyset(&mask); // clears all signals in mask
+    sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
+    sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
+
     printf("exchange received sigusr1 from %d\n", info->si_value.sival_int);
-    sigusr1_received = 1;
+    sigusr1_received++;
 
     signal_node node = (signal_node) malloc(sizeof(struct queue));
     node->trader_id = info->si_value.sival_int;
     node->next = NULL;
     enqueue(node);
+    sigusr1_received--;
 
     return;
 }
@@ -122,8 +129,8 @@ int main(int argc, char ** argv) {
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
     while (!all_children_terminated) {
-        if (sigusr1_received) {
-            // sigprocmask(SIG_BLOCK, &mask, NULL); // block
+        while (head_sig != NULL && sigusr1_received==0) {
+            sigprocmask(SIG_BLOCK, &mask, NULL); // block
             
             struct timeval timeout;
             // Set the timeout value to 5 seconds
@@ -134,8 +141,7 @@ int main(int argc, char ** argv) {
             int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, &timeout);
             int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
             
-            sigusr1_received = 0;
-            // sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
+            sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
             
             if (tr_num == 0 || ex_num == 0) {
                 perror("Select timed out");
@@ -144,21 +150,20 @@ int main(int argc, char ** argv) {
                 perror("Select failed");
                 exit(4);
             } else {
-                while (head_sig != NULL) {
-                    int success = 0;
-                    if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
-                            && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
-                        success = rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
-                                    exchange_pool->fds_set[head_sig->trader_id]);
-                    }
-                    dequeue();
+                int success = 0;
+                if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
+                        && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
+                    success = rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
+                                exchange_pool->fds_set[head_sig->trader_id]);
+                }
+                dequeue();
 
-                    if (success) {
-                        match_order();                    
-                        report_order_book(); 
-                    }
+                if (success) {
+                    match_order();                    
+                    report_order_book(); 
                 }
             } 
+
             reset_fds();
         }
 
