@@ -35,6 +35,8 @@ struct product_orders {
     char *product;
     order_node head_order;
     order_node tail_order;
+    int * trader_qty_index; // number of this product held per trader
+    int * trader_fee_index; // exchange fee put in for this product per trader
     int buy_level;
     int sell_level;
 };
@@ -46,7 +48,7 @@ handler_t *Signal(int signum, handler_t *handler); // [1] signal to catch;
                                                    // [2] pointer to the function that will be called when the signal is received
 void enqueue(signal_node node);
 void dequeue();
-void create_orderbook(int product_num, char ** product_ls);
+void create_orderbook(int num_traders, int product_num, char ** product_ls);
 order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price);
 void add_order(order_node node);
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price);

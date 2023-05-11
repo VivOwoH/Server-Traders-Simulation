@@ -26,7 +26,6 @@ void connect_pipes(int);
 int rw_trader(int, int, int);
 void market_alert(int pid, order_node order);
 void parse_products(char* filename);
-void ini_trader_info();
 void match_order();
 void report_order_book();
 void free_mem();

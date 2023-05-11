@@ -45,11 +45,13 @@ void dequeue() {
     free(tmp);
 }
 
-void create_orderbook(int product_num, char ** product_ls) {
+void create_orderbook(int num_traders, int product_num, char ** product_ls) {
     orderbook_size = product_num;
     orderbook = malloc(orderbook_size * sizeof(orderbook_node));
     for (int i = 0; i < orderbook_size; i++) {
         orderbook[i] = (orderbook_node) malloc(sizeof(struct product_orders));
+        orderbook[i]->trader_fee_index = calloc(num_traders, sizeof(int));
+        orderbook[i]->trader_qty_index = calloc(num_traders, sizeof(int));
         orderbook[i]->product = product_ls[i];
         orderbook[i]->buy_level = 0;
         orderbook[i]->sell_level = 0;

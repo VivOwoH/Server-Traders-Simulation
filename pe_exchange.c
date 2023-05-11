@@ -9,8 +9,6 @@
 int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
-int ** trader_product_qty_index; // number of each product held per trader
-int * trader_fee_index; // money held per trader
 int total_ex_fee = 0;
 pid_t * pids;
 struct fd_pool ex_fds; // exchange file descriptors
@@ -71,8 +69,7 @@ int main(int argc, char ** argv) {
     trader_pool->fds_set = malloc(sizeof(int) * (num_traders)); 
     exchange_pool->fds_set = malloc(sizeof(int) * (num_traders)); 
 
-    ini_trader_info();
-    create_orderbook(product_num, product_ls); // each product has a orderbook
+    create_orderbook(num_traders, product_num, product_ls); // each product has a orderbook
 
     // launch binaries (fork + exec)
     // each child exchange has a ex_fd that connects to the corresponding tr_fd
@@ -247,6 +244,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         sscanf(line, "%s", cmd); // read until first space
         char write_line[BUFFLEN];
         
+        // TODO: verify invalid
+        // product is in list
+        // ORDER_ID: integer, 0 - 999999 (incremental)
+        // QTY, PRICE: integer, 1 - 999999
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
             sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
                 snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
@@ -276,10 +277,12 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 write(fd_exchange, write_line, strlen(write_line));
         }
         else { // invalid command
-        // TODO: invalid qty
             success_order = 0;
-            write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
         }
+
+        if (!success_order)
+            write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+
         kill(pids[id], SIGUSR1);
 
         if (success_order)
@@ -443,12 +446,13 @@ void report_order_book() {
     for (int i = 0; i < num_traders; i++) {
         printf("%s Trader %d: ", LOG_PREFIX, i);
         for (int j = 0; j < product_num; j++) {
+            orderbook_node book = orderbook[j];
             if (j == product_num-1)
-                printf("%s %d ($%d)\n", product_ls[i], 
-                        trader_product_qty_index[i][j], trader_fee_index[i]);
+                printf("%s %d ($%d)\n", book->product, 
+                        book->trader_qty_index[i], book->trader_fee_index[i]);
             else 
-                printf("%s %d ($%d), ", product_ls[i], 
-                        trader_product_qty_index[i][j], trader_fee_index[i]);
+                printf("%s %d ($%d), ", book->product, 
+                        book->trader_qty_index[i], book->trader_fee_index[i]);
         }  
     }
     return;
@@ -481,15 +485,6 @@ void parse_products(char* filename) {
     }
 
     fclose(fp);
-}
-
-void ini_trader_info() {
-    trader_fee_index = calloc(num_traders, sizeof(int));
-
-    trader_product_qty_index = malloc(product_num * sizeof(int*));
-    for (int i = 0; i < product_num; i++) {
-        trader_product_qty_index[i] = calloc(num_traders, sizeof(int)); // num of product per trader
-    }
 }
 
 // create pipes for 1 trader
@@ -560,6 +555,9 @@ void free_mem() {
 
     for (int i = 0; i < product_num; i++) {
         orderbook_node book = orderbook[i];
+        free(book->trader_fee_index);
+        free(book->trader_qty_index);
+
         order_node tmp = NULL;
         while (book->head_order != NULL) {
             tmp = book->head_order;
