@@ -165,7 +165,7 @@ int main(int argc, char ** argv) {
                     report_order_book();
                 }
             }
-            usleep(10000);
+            // usleep(10000);
         } 
         reset_fds();
 
@@ -190,7 +190,7 @@ int main(int argc, char ** argv) {
             if (errno == ECHILD) {
                 all_children_terminated = 1;
             }
-            else {
+            else if (errno != EINTR) {
                 perror("waitpid error");
                 exit(6);
             }
