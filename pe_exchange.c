@@ -165,7 +165,6 @@ int main(int argc, char ** argv) {
                     match_order();                    
                     report_order_book(); 
                 }
-                usleep(10000);
             } 
             reset_fds();
         }
@@ -196,6 +195,7 @@ int main(int argc, char ** argv) {
                 exit(6);
             }
         }
+        usleep(10000);
     }
 
     // disconnect
