@@ -12,7 +12,7 @@ handler_t* Signal(int signum, handler_t *handler) {
     action.sa_sigaction = handler; // sa_sigaction (not sa_handler) 
                             // specifies the signal-handling function for signum 
     sigemptyset(&action.sa_mask); // block signals of type currently being processed
-    sigaddset(&action.sa_mask, SIGUSR1);
+    sigaddset(&action.sa_mask, signum);
 
     if (sigaction(signum, &action, &old_action) == -1) {
         perror("sigaction error");

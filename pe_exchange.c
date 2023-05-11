@@ -38,12 +38,12 @@ void sigchld_hanlder(int s, siginfo_t *info, void *context) {
     int trader_id = -1;
     
     // wait for all children process to exit
-    while((pid = waitpid(-1, &status, 0)) > 0) {
+    while ( (pid = waitpid(-1, &status, WNOHANG)) > 0) {
         for (int i = 0; i < num_traders; i++) {
             if (pids[i] == pid) {
                 trader_id = i;
-                FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
-                FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
+                close(trader_pool->fds_set[i]);
+                close(exchange_pool->fds_set[i]);
                 break;
             }
         }
