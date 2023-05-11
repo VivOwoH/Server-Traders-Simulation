@@ -9,6 +9,7 @@
 int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
+int * order_id_ls;
 int total_ex_fee = 0;
 pid_t * pids;
 struct fd_pool ex_fds; // exchange file descriptors
@@ -77,6 +78,7 @@ int main(int argc, char ** argv) {
 
     create_orderbook(num_traders, product_num, product_ls); // each product has a orderbook
 
+    order_id_ls = calloc(num_traders, sizeof(int));
     // launch binaries (fork + exec)
     // each child exchange has a ex_fd that connects to the corresponding tr_fd
     // i.e. exchange_child_0 [exchange_fd_0] <-> [trader_fd_0] trader 0
@@ -101,7 +103,7 @@ int main(int argc, char ** argv) {
             perror("execv"); // If exec success it will never return
             exit(3);
         }
-        usleep(50000); // give some time for trader to connect and suspend
+        usleep(30000); // give some time for trader to connect and suspend
         connect_pipes(i);
     }
 
@@ -111,7 +113,6 @@ int main(int argc, char ** argv) {
         if (FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             char msg[] = MARKET_OPEN_MSG;
             write(exchange_pool->fds_set[i], msg, strlen(msg));
-            usleep(10000);
             if (kill(pids[i], SIGUSR1) == -1) {
                 perror("signal: kill failed");
                 exit(1);
@@ -151,20 +152,18 @@ int main(int argc, char ** argv) {
         } else if ((tr_num == -1 || ex_num == -1) && errno != EINTR) {
             perror("Select failed");
             exit(4);
-        } else {
-            while (head_sig != NULL) {
-                int success = 0;
-                if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
-                        && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
-                    success = rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
-                                exchange_pool->fds_set[head_sig->trader_id]);
-                }
-                dequeue();
+        } else if (head_sig != NULL) {
+            int success = 0;
+            if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
+                    && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
+                success = rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
+                            exchange_pool->fds_set[head_sig->trader_id]);
+            }
+            dequeue();
 
-                if (success) {
-                    match_order();                    
-                    report_order_book();
-                }
+            if (success) {
+                match_order();                    
+                report_order_book();
             }
         } 
         reset_fds();
@@ -217,12 +216,12 @@ int main(int argc, char ** argv) {
     return 0;
 }
 
-int valid_check(int order_type, int order_id, char * product, int qty, int price) {
+int valid_check(int trader_id, int order_type, int order_id, char * product, int qty, int price) {
     // product is in list
     // ORDER_ID: integer, 0 - 999999 (incremental)
     // QTY, PRICE: integer, 1 - 999999
     // order_id->all; qty,price->buy,sell,amend; product->buy,sell
-    if (order_id < 0 || order_id > 999999)
+    if (order_id < 0 || order_id > 999999 || order_id != order_id_ls[trader_id])
         return 0;
     if (order_type == BUY || order_type == SELL || order_type == AMEND) {
         if (qty<1 || qty>999999 || price<1 || price>999999)
@@ -274,11 +273,12 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-            success_order = valid_check(BUY, order_id, product, qty, price);
+            success_order = valid_check(id, BUY, order_id, product, qty, price);
 
             if (success_order) {
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
+                order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
             }
@@ -286,20 +286,20 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
-            success_order = valid_check(SELL, order_id, product, qty, price);
-            printf("T%d: %d\n", id, success_order);
+            success_order = valid_check(id, SELL, order_id, product, qty, price);
+
             if (success_order) {
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
+                order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
-                puts("reach here");
             }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
-            success_order = valid_check(AMEND, order_id, product, qty, price);
+            success_order = valid_check(id, AMEND, order_id, product, qty, price);
 
             if (success_order) {
                 order = amend_order(id, order_id, qty, price);
@@ -309,7 +309,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
                     sscanf(line, CANCL_MSG, &order_id) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
-            success_order = valid_check(CANCEL, order_id, product, qty, price);
+            success_order = valid_check(id, CANCEL, order_id, product, qty, price);
 
             if (success_order) {
                 order = cancel_order(id, order_id);
@@ -406,7 +406,6 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     char write_line[BUFFLEN], write_line_2[BUFFLEN];
     snprintf(write_line, BUFFLEN, FILL_MSG, highest_buy->order_id, buy_fill_qty);
     write(buy_fd, write_line, strlen(write_line));
-    usleep(10000);
     if (kill(highest_buy->pid, SIGUSR1)==-1) {
         perror("signal: kill failed");
         exit(1);
@@ -414,7 +413,6 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
 
     snprintf(write_line_2, BUFFLEN, FILL_MSG, lowest_sell->order_id, sell_fill_qty);
     write(sell_fd, write_line_2, strlen(write_line_2));
-    usleep(10000);
     if (kill(lowest_sell->pid, SIGUSR1)==-1) {
         perror("signal: kill failed");
         exit(1);
