@@ -21,14 +21,14 @@ int sigusr1_received = 0;
 
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-
-    printf("exchange received sigusr1 from %d\n", info->si_pid);
+    // printf("exchange received sigusr1 from %d\n", info->si_pid);
     sigusr1_received++;
 
     signal_node node = (signal_node) malloc(sizeof(struct queue));
     node->trader_id = info->si_value.sival_int;
     node->next = NULL;
     enqueue(node);
+    
     sigusr1_received--;
 
     return;
@@ -158,7 +158,6 @@ int main(int argc, char ** argv) {
                     report_order_book(); 
                 }
             } 
-
             reset_fds();
         }
 
@@ -209,6 +208,10 @@ int main(int argc, char ** argv) {
     
     return 0;
 }
+
+// int valid_check() {
+
+// }
 
 int rw_trader(int id, int fd_trader, int fd_exchange) {
     char line[BUFFLEN];

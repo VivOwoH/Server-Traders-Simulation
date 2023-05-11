@@ -6,7 +6,8 @@ int orderbook_size = 0;
 
 // Sigaction wrapper
 handler_t* Signal(int signum, handler_t *handler) {
-    struct sigaction action, old_action;
+    struct sigaction action = {0}; 
+    struct sigaction old_action = {0};
 
     old_action.sa_flags = SA_SIGINFO;
     action.sa_flags = SA_SIGINFO; 
