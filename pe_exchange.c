@@ -132,7 +132,7 @@ int main(int argc, char ** argv) {
     sigemptyset(&mask); // clears all signals in mask
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
-    while (!all_children_terminated) {
+    while (!all_children_terminated || head_sig != NULL) {
         sigprocmask(SIG_BLOCK, &mask, NULL); // block
         
         struct timeval timeout;
@@ -145,27 +145,25 @@ int main(int argc, char ** argv) {
         int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, &timeout);
         
         sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
-
+        
         if (tr_num == 0 || ex_num == 0) {
             perror("Select timed out");
             exit(4);
         } else if ((tr_num == -1 || ex_num == -1) && errno != EINTR) {
             perror("Select failed");
             exit(4);
-        } else {
-            while (head_sig != NULL) {
-                int success = 0;
-                if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
-                        && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
-                    success = rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
-                                exchange_pool->fds_set[head_sig->trader_id]);
-                }
-                dequeue();
+        } else if (head_sig != NULL) {
+            int success = 0;
+            if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
+                    && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
+                success = rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
+                            exchange_pool->fds_set[head_sig->trader_id]);
+            }
+            dequeue();
 
-                if (success) {
-                    match_order();                    
-                    report_order_book();
-                }
+            if (success) {
+                match_order();                    
+                report_order_book();
             }
         } 
         reset_fds();
