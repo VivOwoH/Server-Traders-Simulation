@@ -7,8 +7,6 @@
 #define SELL_ORDER 1
 
 typedef void handler_t(int, siginfo_t *, void *);
-handler_t *Signal(int signum, handler_t *handler); // [1] signal to catch;
-                                                   // [2] pointer to the function that will be called when the signal is received
 
 struct queue
 {
@@ -17,9 +15,6 @@ struct queue
 };
 typedef struct queue * signal_node;
 extern signal_node head_sig;
-
-void enqueue(signal_node node);
-void dequeue();
 
 struct linkedList
 {
@@ -46,6 +41,11 @@ struct product_orders {
 typedef struct product_orders *orderbook_node;
 extern orderbook_node * orderbook;
 
+
+handler_t *Signal(int signum, handler_t *handler); // [1] signal to catch;
+                                                   // [2] pointer to the function that will be called when the signal is received
+void enqueue(signal_node node);
+void dequeue();
 void create_orderbook(int product_num, char ** product_ls);
 order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price);
 void add_order(order_node node);

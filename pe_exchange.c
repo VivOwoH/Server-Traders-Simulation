@@ -143,17 +143,21 @@ int main(int argc, char ** argv) {
                 exit(4);
             } else {
                 while (head_sig != NULL) {
+                    int success = 0;
                     if (FD_ISSET(trader_pool->fds_set[head_sig->trader_id], &trader_pool->rfds) 
                             && FD_ISSET(exchange_pool->fds_set[head_sig->trader_id], &exchange_pool->rfds)) {
-                        rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
+                        success = rw_trader(head_sig->trader_id, trader_pool->fds_set[head_sig->trader_id], 
                                     exchange_pool->fds_set[head_sig->trader_id]);
                     }
                     dequeue();
 
-                    match_order();                    
-                    report_order_book();
+                    if (success) {
+                        match_order();                    
+                        report_order_book(); 
+                    }
                 }
             } 
+            reset_fds();
             sigusr1_received = 0;
             sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
         }
@@ -212,7 +216,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     int order_id = -1;
     int qty = -1;
     int price = -1;
-    int market_alert_flag = 1;
+    int success_order = 1;
     order_node order = NULL;
 
     // printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
@@ -269,15 +273,15 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 write(fd_exchange, write_line, strlen(write_line));
         }
         else { // invalid command
-            market_alert_flag = 0;
+            success_order = 0;
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
         }
         kill(pids[id], SIGUSR1);
 
-        if (market_alert_flag)
+        if (success_order)
             market_alert(pids[id], order);
     }
-    return 0;
+    return success_order;
 }
 
 void market_alert(int pid, order_node order) {
