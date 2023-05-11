@@ -160,7 +160,7 @@ int main(int argc, char ** argv) {
         // wait for any fds to become ready
         int tr_num = select(trader_pool->maxfd+1, &trader_pool->rfds, NULL, NULL, NULL);
         int ex_num = select(exchange_pool->maxfd+1, NULL, &exchange_pool->rfds, NULL, NULL);
-        printf("tr:%d ex:%d\n", tr_num, ex_num);
+        // printf("tr:%d ex:%d\n", tr_num, ex_num);
         
         if (tr_num == 0 || ex_num == 0 || 
             tr_num == -1 || ex_num == -1) {
@@ -232,7 +232,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     int success_order = 1;
     order_node order = NULL;
 
-    printf("trader_id=%d, fd_trader=%d\n", id, trader_pool->fds_set[id]);
+    printf("trader_id=%d, fd_trader=%d, fd_exchange=%d\n", id, fd_trader, fd_exchange);
 
     // check the read descriptor is ready
     int num_bytes = read(fd_trader, line, sizeof(line));
@@ -568,7 +568,7 @@ void connect_pipes(int i) {
     snprintf(fifo_buffer_tr, BUFFLEN, FIFO_TRADER, i);  
 
     // exchange write to fifo_ex; read from fifo_tr
-    int fd_tr = open(fifo_buffer_tr, O_RDONLY | O_NONBLOCK);
+    int fd_tr = open(fifo_buffer_tr, O_RDWR | O_NONBLOCK);
     trader_pool->fds_set[i] = fd_tr;
     int fd_ex = open(fifo_buffer_ex, O_RDWR | O_NONBLOCK); // must read to open write in non-block
     exchange_pool->fds_set[i] = fd_ex;
