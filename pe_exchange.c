@@ -180,7 +180,7 @@ int main(int argc, char ** argv) {
         } 
         sigusr1_received = 0;
         sigprocmask(SIG_UNBLOCK, &mask, NULL); // unblock
-        // reset_fds();
+        reset_fds();
     }
 
     // disconnect
