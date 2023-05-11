@@ -96,6 +96,10 @@ order_node create_order(int type, int time, int pid, int trader_id, int order_id
 void add_order(order_node node) {
     int unique = 1;
     orderbook_node book = get_orderbook_by_product(node->product);
+    if (book == NULL) {
+        perror("empty orderbook");
+        exit(6);
+    }
 
     if (book->head_order == NULL) {
         book->head_order = node;
@@ -107,17 +111,19 @@ void add_order(order_node node) {
             if (node->price > tmp->price) {
                 node->next = tmp;
                 node->prev = tmp->prev;
+                tmp->prev->next = node; 
                 tmp->prev = node;
                 return;
             }
             unique = (node->price == tmp->price) ? 0 : unique;
             tmp = tmp->next;
         }
-
+        // tmp = last node
         if (node->price > tmp->price) {
             book->head_order = (tmp==book->head_order) ? node : book->head_order;
             node->next = tmp;
             node->prev = tmp->prev;
+            tmp->prev->next = node; 
             tmp->prev = node;
         } else {
             book->tail_order = (tmp==book->tail_order) ? node : book->tail_order;
