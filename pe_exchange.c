@@ -217,9 +217,25 @@ int main(int argc, char ** argv) {
     return 0;
 }
 
-// int valid_check() {
-
-// }
+int valid_check(int order_type, int order_id, char * product, int qty, int price) {
+    // product is in list
+    // ORDER_ID: integer, 0 - 999999 (incremental)
+    // QTY, PRICE: integer, 1 - 999999
+    // order_id->all; qty,price->buy,sell,amend; product->buy,sell
+    if (order_id < 0 || order_id > 999999)
+        return 0;
+    if (order_type == BUY || order_type == SELL || order_type == AMEND) {
+        if (qty<1 || qty>999999 || price<1 || price>999999)
+            return 0;
+    }
+    int valid = 0;
+    if (order_type == BUY || order_type == SELL) {
+        for (int i = 0; i < product_num; i++) {
+            valid = (strcmp(product_ls[i], product)==0) ? 1 : valid;
+        }
+    }
+    return valid;
+}
 
 int rw_trader(int id, int fd_trader, int fd_exchange) {
     char line[BUFFLEN];
@@ -255,37 +271,49 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         sscanf(line, "%s", cmd); // read until first space
         char write_line[BUFFLEN];
         
-        // TODO: verify invalid
-        // product is in list
-        // ORDER_ID: integer, 0 - 999999 (incremental)
-        // QTY, PRICE: integer, 1 - 999999
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
-            sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
-                snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                    sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
+            snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+            success_order = valid_check(BUY, order_id, product, qty, price);
+
+            if (success_order) {
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
+            }
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
-            sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
-                snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+                    sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
+            snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
+            success_order = valid_check(SELL, order_id, product, qty, price);
+
+            if (success_order) {
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_time++; // increment counter
                 write(fd_exchange, write_line, strlen(write_line));
+            }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
-            sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
-                snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
+                    sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
+            snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
+            success_order = valid_check(AMEND, order_id, product, qty, price);
+
+            if (success_order) {
                 order = amend_order(id, order_id, qty, price);
                 write(fd_exchange, write_line, strlen(write_line));
+            }
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
-            sscanf(line, CANCL_MSG, &order_id) != EOF) {
-                snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
+                    sscanf(line, CANCL_MSG, &order_id) != EOF) {
+            snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
+            success_order = valid_check(CANCEL, order_id, product, qty, price);
+
+            if (success_order) {
                 order = cancel_order(id, order_id);
                 write(fd_exchange, write_line, strlen(write_line));
+            } 
         }
         else { // invalid command
             success_order = 0;
