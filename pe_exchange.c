@@ -298,7 +298,7 @@ void report_order_book() {
             int sec_price = 0;
             int sec_num_order = 0;
             order_node tmp = curr->next;
-            while (tmp->price == price) {
+            while (tmp!= NULL && tmp->price == price) {
                 if (tmp->order_type == curr->order_type) {
                     qty += tmp->qty;
                     price += tmp->price;
