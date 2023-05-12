@@ -158,7 +158,7 @@ void update_orderbook(orderbook_node book, order_node order) {
     add_order(order, book);
 }
 
-order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) {
+order_node amend_order(int trader_id, int order_id, int new_qty, int new_price, int new_time) {
     order_node curr = get_order_by_ids(trader_id, order_id);
     if (curr == NULL) {
         perror("no such order");
@@ -170,9 +170,9 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
         exit(6);
     }
     check_unique_price(book, curr, -1);
-    
     curr->qty = new_qty;
     curr->price = new_price;
+    curr->time = new_time;
     update_orderbook(book, curr);
     return curr;
 }

@@ -324,7 +324,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 // puts("success amend");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
-                order = amend_order(id, order_id, qty, price);
+                order = amend_order(id, order_id, qty, price, order_time);
+                order_time++; // increment counter
             }
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
@@ -337,7 +338,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 // puts("success cancel");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
-                order = amend_order(id, order_id, 0, 0);
+                order = amend_order(id, order_id, 0, 0, order_time);
+                order_time++; // increment counter
             } 
         }
         else { // invalid command
@@ -395,19 +397,20 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
     // -------------------- Fill + Amend -----------------------
     if (highest_buy->qty > lowest_sell->qty) {
         // sell is fullfilled, amend buy
+        // *Not actually amend, so dont change time
         buy_fill_qty = lowest_sell->qty;
-        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
+        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0, lowest_sell->time);
         amend_order(highest_buy->trader_id, highest_buy->order_id, 
-                    (highest_buy->qty - buy_fill_qty), highest_buy->price);
+                    (highest_buy->qty - buy_fill_qty), highest_buy->price, highest_buy->time);
     } else if (highest_buy->qty < lowest_sell->qty) {
         // buy is fullfilled, amend sell
         sell_fill_qty = highest_buy->qty;
-        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
+        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0, highest_buy->time);
         amend_order(lowest_sell->trader_id, lowest_sell->order_id, 
-                    (lowest_sell->qty - sell_fill_qty), lowest_sell->price);
+                    (lowest_sell->qty - sell_fill_qty), lowest_sell->price, lowest_sell->time);
     } else {
-        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
-        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
+        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0, highest_buy->time);
+        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0, lowest_sell->time);
     }
 
     // -------------------- value + fee -----------------------

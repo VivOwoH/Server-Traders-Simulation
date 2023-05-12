@@ -54,7 +54,7 @@ order_node get_order_by_ids(int trader_id, int order_id);
 order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price);
 order_node add_order(order_node node, orderbook_node book);
 void remove_order(order_node order, orderbook_node book);
-order_node amend_order(int trader_id, int order_id, int new_qty, int new_price);
+order_node amend_order(int trader_id, int order_id, int new_qty, int new_price, int new_time);
 void free_orderbook();
 
 #endif
