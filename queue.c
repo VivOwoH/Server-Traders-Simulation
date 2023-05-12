@@ -42,6 +42,8 @@ orderbook_node get_orderbook_by_product(char * product) {
         if (strcmp(orderbook[i]->product, product)==0)
             return orderbook[i];
     }
+    perror("empty orderbook");
+    exit(6);
     return NULL;
 }
 
@@ -77,12 +79,9 @@ void check_unique_price(orderbook_node book, order_node node, int val) {
 }
 
 // sorted by price-time priority
-void add_order(order_node node) {
-    orderbook_node book = get_orderbook_by_product(node->product);
-    if (book == NULL) {
-        perror("empty orderbook");
-        exit(6);
-    }
+void add_order(order_node node, orderbook_node book) {
+    if (book == NULL) 
+        book = get_orderbook_by_product(node->product);
 
     check_unique_price(book, node, 1);
 
@@ -115,6 +114,21 @@ void add_order(order_node node) {
     return;
 }
 
+void update_orderbook(orderbook_node book, order_node order) {
+    if (order == book->head_order && order->next != NULL) {
+        book->head_order = order->next;
+    } else if (order == book->head_order && order->next == NULL)
+        return;
+
+    // remove this order from book
+    order->next->prev = NULL;
+    order->prev->next = NULL;
+    order->next = NULL;
+    order->prev = NULL;    
+
+    add_order(order, book);
+}
+
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) {
     order_node curr = NULL;
     for (int i = 0; i < orderbook_size; i++) {
@@ -124,7 +138,7 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
                 check_unique_price(orderbook[i], curr, -1);
                 curr->qty = new_qty;
                 curr->price = new_price;
-                check_unique_price(orderbook[i], curr, 1);
+                update_orderbook(orderbook[i], curr);
                 return curr;
             }
             curr = curr->next;

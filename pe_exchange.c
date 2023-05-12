@@ -266,7 +266,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             if (success_order) {
                 puts("success write");
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
-                add_order(order);
+                add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
                 int c = write(fd_exchange, write_line, strlen(write_line));
@@ -282,7 +282,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             if (success_order) {
                 puts("success sell");
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
-                add_order(order);
+                add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
                 int c = write(fd_exchange, write_line, strlen(write_line));

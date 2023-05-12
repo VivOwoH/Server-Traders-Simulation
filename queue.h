@@ -51,7 +51,7 @@ void enqueue(signal_node node);
 void dequeue();
 void create_orderbook(int num_traders, int product_num, char ** product_ls);
 order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price);
-void add_order(order_node node);
+void add_order(order_node node, orderbook_node book);
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price);
 
 #endif
