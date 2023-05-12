@@ -176,6 +176,8 @@ int main(int argc, char ** argv) {
             if (success) {
                 match_order();                    
                 report_order_book();
+            } else {
+                puts("unsuccessful");
             }
         } 
         sigusr1_received = 0;
@@ -205,6 +207,7 @@ int main(int argc, char ** argv) {
         if (pid == -1) {
             if (errno == ECHILD) {
                 all_children_terminated = 1;
+                puts("start terminating...");
             }
             else if (errno != EINTR) {
                 perror("waitpid error");
@@ -212,7 +215,7 @@ int main(int argc, char ** argv) {
             }
         }
     }
-
+    puts("out of loop");
     // disconnect
     for (int i = 0; i < num_traders; i++){
         char fifo_buffer_ex[BUFFLEN], fifo_buffer_tr[BUFFLEN];
@@ -291,8 +294,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, BUY, order_id, product, qty, price);
+            printf("%d ", success_order);
 
             if (success_order) {
+                puts("success write");
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_id_ls[id] = order_id + 1;
@@ -304,8 +309,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, SELL, order_id, product, qty, price);
+            printf("%d ", success_order);
 
             if (success_order) {
+                puts("success sell");
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order);
                 order_id_ls[id] = order_id + 1;
@@ -317,8 +324,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
             success_order = valid_check(id, AMEND, order_id, product, qty, price);
+            printf("%d ", success_order);
 
             if (success_order) {
+                puts("success amend");
                 order = amend_order(id, order_id, qty, price);
                 write(fd_exchange, write_line, strlen(write_line));
             }
@@ -327,19 +336,23 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, CANCL_MSG, &order_id) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
             success_order = valid_check(id, CANCEL, order_id, product, qty, price);
+            printf("%d ", success_order);
 
             if (success_order) {
+                puts("success cancel");
                 order = cancel_order(id, order_id);
                 write(fd_exchange, write_line, strlen(write_line));
             } 
         }
         else { // invalid command
+            puts("invalid");  
             success_order = 0;
         }
 
         if (!success_order)
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-
+        
+        puts("send signal");
         if (kill(pids[id], SIGUSR1) == -1) {
             perror("signal: kill failed");
             exit(1);
