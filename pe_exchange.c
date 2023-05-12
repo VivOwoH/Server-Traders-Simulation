@@ -509,11 +509,11 @@ void match_order() {
 }
 
 void report_order_book() {
-    int qty = 0;
-    int price = 0;
+    long qty = 0;
+    long price = 0;
     int num_order = 0;
-    int sec_qty = 0;
-    int sec_price = 0;
+    long sec_qty = 0;
+    long sec_price = 0;
     int sec_num_order = 0;
 
     printf("%s\t--ORDERBOOK--\n", LOG_PREFIX);
@@ -551,13 +551,13 @@ void report_order_book() {
                 }
             }
 
-            printf("%s\t\t%s %d @ $%d (%d ", 
+            printf("%s\t\t%s %ld @ $%ld (%d ", 
                 LOG_PREFIX, CMD_STRING[curr->order_type], qty, price, num_order);
             if (num_order > 1) puts("orders)");
             else puts("order)");
 
             if (sec_num_order > 0) {
-                printf("%s\t\t%s %d @ $%d (%d ", 
+                printf("%s\t\t%s %ld @ $%ld (%d ", 
                     LOG_PREFIX, CMD_STRING[1-curr->order_type], sec_qty, 
                     sec_price, sec_num_order); // buy=0; sell=1
                 if (sec_num_order > 1) puts("orders)");
