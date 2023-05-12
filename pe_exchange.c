@@ -379,11 +379,11 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
     // charge last trader 1% of qty*price
     int buy_fd = exchange_pool->fds_set[highest_buy->trader_id];
     int sell_fd = exchange_pool->fds_set[lowest_sell->trader_id];
-    int match_price = -1;
+    long long match_price = -1;
     long long final_price = -1;
     long long transaction_fee = -1;
-    int buy_fill_qty = highest_buy->qty;
-    int sell_fill_qty = lowest_sell->qty;
+    long long buy_fill_qty = highest_buy->qty;
+    long long sell_fill_qty = lowest_sell->qty;
 
     // printf("lowest:p%d q%d\n", lowest_sell->price, lowest_sell->qty);
     // printf("highest:p%d q%d\n", highest_buy->price, highest_buy->qty);
