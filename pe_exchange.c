@@ -252,6 +252,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     int order_id = -1;
     int qty = -1;
     int price = -1;
+    int args = 0;
     int success_order = 1;
     order_node order = NULL;
 
@@ -274,6 +275,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 line[i] = '\0'; // terminate the message
                 break;
             }
+            if (line[i] == ' ') args++;
         }
 
         printf("%s [T%d] Parsing command: <%s>\n", LOG_PREFIX, id, line);
@@ -284,6 +286,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) == 4) {
             success_order = valid_check(id, BUY, order_id, product, qty, price);
+            success_order = (args+1 > 4) ? 0 : success_order;
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             // printf("buy case: %d \n", success_order);
 
@@ -300,6 +303,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) == 4) {
             success_order = valid_check(id, SELL, order_id, product, qty, price);
+            success_order = (args+1 > 4) ? 0 : success_order;
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             // printf("sell case: %d \n", success_order);
 
@@ -316,6 +320,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) == 3) {
             success_order = valid_check(id, AMEND, order_id, product, qty, price);
+            success_order = (args+1 > 3) ? 0 : success_order;
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
             // printf("amend case: %d \n", success_order);
 
@@ -330,6 +335,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
                     sscanf(line, CANCL_MSG, &order_id) == 1) {
             success_order = valid_check(id, CANCEL, order_id, product, qty, price);
+            success_order = (args+1 > 1) ? 0 : success_order;
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
             // printf("cancel case: %d \n", success_order);
 
