@@ -188,6 +188,7 @@ void remove_order(int trader_id, int order_id) {
         curr->prev->next = curr->next;
     }
     free(curr);
+    return;
 }
 
 void free_orderbook() {

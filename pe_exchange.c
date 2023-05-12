@@ -234,7 +234,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     int success_order = 1;
     order_node order = NULL;
 
-    printf("trader_id=%d, fd_trader=%d, fd_exchange=%d\n", id, fd_trader, fd_exchange);
+    // printf("trader_id=%d, fd_trader=%d, fd_exchange=%d\n", id, fd_trader, fd_exchange);
 
     // check the read descriptor is ready
     int num_bytes = read(fd_trader, line, sizeof(line));
