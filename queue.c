@@ -63,7 +63,7 @@ order_node create_order(int type, int time, int pid, int trader_id, int order_id
 }
 
 // update value if unique
-void check_unique_price(orderbook_node book, order_node node, int val) {
+void check_unique_price(orderbook_node book, order_node node, int val) {    
     order_node curr = book->head_order;
     while(curr != NULL) {
         if ((curr != node) && (curr->order_type == node->order_type) 
@@ -144,7 +144,12 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
         curr = orderbook[i]->head_order;
         while (curr != NULL) {
             if (curr->trader_id == trader_id && curr->order_id == order_id) {
-                check_unique_price(orderbook[i], curr, -1);
+                if (new_price == 0 && curr->order_type == BUY_ORDER) 
+                    orderbook[i]->buy_level--;
+                else if (new_price == 0 && curr->order_type == SELL_ORDER)
+                    orderbook[i]->sell_level--;
+                else check_unique_price(orderbook[i], curr, -1);
+                
                 curr->qty = new_qty;
                 curr->price = new_price;
                 update_orderbook(orderbook[i], curr);

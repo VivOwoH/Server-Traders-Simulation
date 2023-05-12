@@ -386,24 +386,6 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     printf("lowest:p%d q%d\n", lowest_sell->price, lowest_sell->qty);
     printf("highest:p%d q%d\n", highest_buy->price, highest_buy->qty);
 
-    // -------------------- Fill + Amend -----------------------
-    if (highest_buy->qty > lowest_sell->qty) {
-        // sell is fullfilled, amend buy
-        buy_fill_qty = lowest_sell->qty;
-        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
-        amend_order(highest_buy->trader_id, highest_buy->order_id, 
-                    (highest_buy->qty - buy_fill_qty), highest_buy->price);
-    } else if (highest_buy->qty < lowest_sell->qty) {
-        // buy is fullfilled, amend sell
-        sell_fill_qty = highest_buy->qty;
-        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
-        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 
-                    (lowest_sell->qty - sell_fill_qty), lowest_sell->price);
-    } else {
-        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
-        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
-    }
-
     // -------------------- value + fee -----------------------
     if (highest_buy->time > lowest_sell->time) {
         // match sell, new=buy
@@ -420,6 +402,24 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
         printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
             LOG_PREFIX, highest_buy->order_id, highest_buy->trader_id, 
             lowest_sell->order_id, lowest_sell->trader_id, final_price, transaction_fee);
+    }
+
+    // -------------------- Fill + Amend -----------------------
+    if (highest_buy->qty > lowest_sell->qty) {
+        // sell is fullfilled, amend buy
+        buy_fill_qty = lowest_sell->qty;
+        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
+        amend_order(highest_buy->trader_id, highest_buy->order_id, 
+                    (highest_buy->qty - buy_fill_qty), highest_buy->price);
+    } else if (highest_buy->qty < lowest_sell->qty) {
+        // buy is fullfilled, amend sell
+        sell_fill_qty = highest_buy->qty;
+        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
+        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 
+                    (lowest_sell->qty - sell_fill_qty), lowest_sell->price);
+    } else {
+        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
+        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
     }
     
     // -------------------- write + sig -----------------------
