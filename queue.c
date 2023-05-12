@@ -91,7 +91,7 @@ void check_unique_price(orderbook_node book, order_node node, int val) {
     if (node->order_type == BUY_ORDER) {
         book->buy_level += val;
         printf("check:%d buy level:%d\n", node->price, book->buy_level);
-    } else {
+    } else if (node->order_type == SELL_ORDER) {
         book->sell_level += val;
         printf("check:%d sell level:%d\n", node->price, book->sell_level);
     }
