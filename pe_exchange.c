@@ -209,19 +209,27 @@ int valid_check(int trader_id, int order_type, int order_id, char * product, int
     // QTY, PRICE: integer, 1 - 999999
     // order_id->all; qty,price->buy,sell,amend; product->buy,sell
     int valid = 1;
-    if (order_id < 0 || order_id > 999999 || order_id != order_id_ls[trader_id])
+    printf("%d %d %d %s %d %d\n", trader_id, order_type, order_id, product, qty, price);
+    if (order_id < 0 || order_id > 999999 || order_id != order_id_ls[trader_id]) {
+        puts("htis order_id case");
         return 0;
-    if (order_type == BUY || order_type == SELL || order_type == AMEND) {
-        if (qty<1 || qty>999999 || price<1 || price>999999)
-            return 0;
     }
+    if (order_type == BUY || order_type == SELL || order_type == AMEND) {
+        if (qty<1 || qty>999999 || price<1 || price>999999) {
+            puts("htis qty or price case");
+            return 0;
+        }
+    }
+
     int found = 0;
     if (order_type == BUY || order_type == SELL) {
         for (int i = 0; i < product_num; i++) {
             found = (strcmp(product_ls[i], product)==0) ? 1 : found;
+            break;
         }
         valid = found;
     }
+    printf("found:%d\n", found);
     return valid;
 }
 
@@ -263,7 +271,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, BUY, order_id, product, qty, price);
-            printf("%d ", success_order);
+            printf("%d \n", success_order);
 
             if (success_order) {
                 puts("success write");
@@ -279,7 +287,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, SELL, order_id, product, qty, price);
-            printf("%d ", success_order);
+            printf("%d \n", success_order);
 
             if (success_order) {
                 puts("success sell");
@@ -295,7 +303,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
             success_order = valid_check(id, AMEND, order_id, product, qty, price);
-            printf("%d ", success_order);
+            printf("%d \n", success_order);
 
             if (success_order) {
                 puts("success amend");
@@ -308,7 +316,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, CANCL_MSG, &order_id) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
             success_order = valid_check(id, CANCEL, order_id, product, qty, price);
-            printf("%d ", success_order);
+            printf("%d \n", success_order);
 
             if (success_order) {
                 puts("success cancel");
