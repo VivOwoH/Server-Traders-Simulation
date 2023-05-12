@@ -258,7 +258,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     // printf("trader_id=%d, fd_trader=%d, fd_exchange=%d\n", id, fd_trader, fd_exchange);
 
     // check the read descriptor is ready
-    int num_bytes = read(fd_trader, line, BUFFLEN);
+    int num_bytes = read(fd_trader, line, sizeof(line));
 
     if (num_bytes == -1) {
         perror("Read failure");
@@ -269,18 +269,11 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         exit(4);
     } 
     else {
-        int terminated = 0;
-        for (int i = 0; i < BUFFLEN; i++){
+        for (int i = 0; i < strlen(line); i++){
             if (line[i] == ';') {
                 line[i] = '\0'; // terminate the message
-                terminated = 1;
                 break;
             }
-        }
-        if (!terminated) { // not terminated invalid message -> invalid kill
-            write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-            kill(pids[id], SIGUSR1);
-            return 0;
         }
 
         printf("%s [T%d] Parsing command: <%s>\n", LOG_PREFIX, id, line);
@@ -289,7 +282,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         char write_line[BUFFLEN];
         
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
-                    sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
+                    sscanf(line, BUY_MSG, &order_id, product, &qty, &price) == 4) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, BUY, order_id, product, qty, price);
             // printf("buy case: %d \n", success_order);
@@ -305,7 +298,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
-                    sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
+                    sscanf(line, SELL_MSG, &order_id, product, &qty, &price) == 4) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, SELL, order_id, product, qty, price);
             // printf("sell case: %d \n", success_order);
@@ -321,7 +314,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
-                    sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
+                    sscanf(line, AMD_MSG, &order_id, &qty, &price) == 3) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
             success_order = valid_check(id, AMEND, order_id, product, qty, price);
             // printf("amend case: %d \n", success_order);
@@ -335,7 +328,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
-                    sscanf(line, CANCL_MSG, &order_id) != EOF) {
+                    sscanf(line, CANCL_MSG, &order_id) == 1) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
             success_order = valid_check(id, CANCEL, order_id, product, qty, price);
             // printf("cancel case: %d \n", success_order);
