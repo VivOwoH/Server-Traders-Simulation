@@ -80,7 +80,7 @@ void check_unique_price(orderbook_node book, order_node node, int val) {
 }
 
 // sorted by price-time priority
-void add_order(order_node node, orderbook_node book) {
+order_node add_order(order_node node, orderbook_node book) {
     if (book == NULL) 
         book = get_orderbook_by_product(node->product);
 
@@ -117,7 +117,7 @@ void add_order(order_node node, orderbook_node book) {
             (book->tail_order == NULL || book->tail_order->price >= node->price))
         book->tail_order = node;
     
-    return;
+    return node;
 }
 
 void update_orderbook(orderbook_node book, order_node order) {
