@@ -208,17 +208,19 @@ int valid_check(int trader_id, int order_type, int order_id, char * product, int
     // ORDER_ID: integer, 0 - 999999 (incremental)
     // QTY, PRICE: integer, 1 - 999999
     // order_id->all; qty,price->buy,sell,amend; product->buy,sell
+    int valid = 1;
     if (order_id < 0 || order_id > 999999 || order_id != order_id_ls[trader_id])
         return 0;
     if (order_type == BUY || order_type == SELL || order_type == AMEND) {
         if (qty<1 || qty>999999 || price<1 || price>999999)
             return 0;
     }
-    int valid = 0;
+    int found = 0;
     if (order_type == BUY || order_type == SELL) {
         for (int i = 0; i < product_num; i++) {
-            valid = (strcmp(product_ls[i], product)==0) ? 1 : valid;
+            found = (strcmp(product_ls[i], product)==0) ? 1 : found;
         }
+        valid = found;
     }
     return valid;
 }
@@ -267,9 +269,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 puts("success write");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
-                order_node tmp = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
-                order = add_order(tmp, NULL);
-                free(tmp);
+                order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
+                add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
             }
@@ -284,9 +285,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 puts("success sell");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
-                order_node tmp = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
-                order = add_order(tmp, NULL);
-                free(tmp);
+                order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
+                add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
             }

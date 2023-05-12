@@ -114,7 +114,7 @@ order_node add_order(order_node node, orderbook_node book) {
         puts("add while return");
     }
     if (node->order_type == SELL_ORDER && 
-            (book->tail_order == NULL || book->tail_order->price >= node->price))
+            (book->tail_order == NULL || node->price <= book->tail_order->price))
         book->tail_order = node;
     
     return node;
@@ -123,13 +123,15 @@ order_node add_order(order_node node, orderbook_node book) {
 void update_orderbook(orderbook_node book, order_node order) {
     if (order == book->head_order && order->next != NULL) {
         book->head_order = order->next;
-    } else if (order == book->head_order && order->next == NULL)
-        return;
-
-    // remove this order from book
-    if (order->next != NULL) 
         order->next->prev = NULL;
-    order->prev->next = NULL;
+    } else if (order == book->head_order && order->next == NULL) {
+        return; // dont need to do anything
+    } else if (order->next == NULL) { //last node
+        order->prev->next = NULL;
+    } else {
+        order->next->prev = order->prev;
+        order->prev->next = order->next;
+    }
     order->next = NULL;
     order->prev = NULL;    
 
@@ -152,6 +154,40 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
         }
     }
     return NULL;
+}
+
+void remove_order(int trader_id, int order_id) {
+    int found = 0;
+    order_node curr = NULL;
+    orderbook_node book = NULL;
+    for (int i = 0; i < orderbook_size; i++) {
+        book = orderbook[i];
+        curr = book->head_order;
+        while (curr != NULL) {
+            if (curr->trader_id == trader_id && curr->order_id == order_id) {
+                found = 1;
+                break;
+            }
+            curr = curr->next;
+        }
+        if (found) break;
+    }
+
+    if (!found) return;
+
+    // remove this order from book
+    if (curr == book->head_order && curr->next != NULL) {
+        book->head_order = curr->next;
+        curr->next->prev = NULL;
+    } else if (curr == book->head_order && curr->next == NULL) {
+        book->head_order = NULL;
+    } else if (curr->next == NULL) { // last node
+        curr->prev->next = NULL;
+    } else {
+        curr->next->prev = curr->prev;
+        curr->prev->next = curr->next;
+    }
+    free(curr);
 }
 
 void free_orderbook() {
