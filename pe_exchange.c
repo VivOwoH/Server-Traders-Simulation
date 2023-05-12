@@ -380,8 +380,8 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
     int buy_fd = exchange_pool->fds_set[highest_buy->trader_id];
     int sell_fd = exchange_pool->fds_set[lowest_sell->trader_id];
     int match_price = -1;
-    int final_price = -1;
-    int transaction_fee = -1;
+    long long final_price = -1;
+    long long transaction_fee = -1;
     int buy_fill_qty = highest_buy->qty;
     int sell_fill_qty = lowest_sell->qty;
 
@@ -416,7 +416,7 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
         final_price = match_price * sell_fill_qty;
         transaction_fee = (int) (final_price * 0.01 + 0.5); 
                                             // fast round cast; not valid for neg number
-        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
+        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%lld, fee: $%lld.\n", 
             LOG_PREFIX, lowest_sell->order_id, lowest_sell->trader_id, 
             highest_buy->order_id, highest_buy->trader_id, final_price, transaction_fee);
         
@@ -429,7 +429,7 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
         // match buy price, seller has transaction
         final_price = match_price * buy_fill_qty;
         transaction_fee = (int) (final_price * 0.01 + 0.5);
-        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
+        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%lld, fee: $%lld.\n", 
             LOG_PREFIX, highest_buy->order_id, highest_buy->trader_id, 
             lowest_sell->order_id, lowest_sell->trader_id, final_price, transaction_fee);
 
