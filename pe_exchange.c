@@ -22,7 +22,7 @@ int pid_wip[2] = {0};
 int order_time = 0; // orders from earliest to latest
 
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
-    printf("exchange received sigusr1 from %d\n", info->si_pid);
+    // printf("exchange received sigusr1 from %d\n", info->si_pid);
     sigusr1_received = 1;
     pid_wip[0] = info->si_pid;
     for (int i = 0; i < num_traders; i++) {
@@ -203,32 +203,33 @@ int main(int argc, char ** argv) {
     return 0;
 }
 
+// product is in list
+// ORDER_ID: integer, 0 - 999999 (incremental)
+// QTY, PRICE: integer, 1 - 999999
+// order_id->all; qty,price->buy,sell,amend; product->buy,sell
 int valid_check(int trader_id, int order_type, int order_id, char * product, int qty, int price) {
-    // product is in list
-    // ORDER_ID: integer, 0 - 999999 (incremental)
-    // QTY, PRICE: integer, 1 - 999999
-    // order_id->all; qty,price->buy,sell,amend; product->buy,sell
+    // printf("%d %d %d %s %d %d order_ls:%d\n", trader_id, order_type, 
+    //     order_id, product, qty, price, order_id_ls[trader_id]);
     int valid = 1;
-    printf("%d %d %d %s %d %d order_ls:%d\n", trader_id, order_type, 
-        order_id, product, qty, price, order_id_ls[trader_id]);
+        
     // (1) order id general
     if (order_id < 0 || order_id > 999999) {
-        puts("htis order_id case 1");
+        // puts("hits order_id case 1");
         return 0;
     } // (2) order id increment 
     else if ((order_type == BUY || order_type == SELL) && order_id != order_id_ls[trader_id]) {
-        puts("htis order_id case 2");
+        // puts("hits order_id case 2");
         return 0;
     } // (3) order_id not in orderbook
     else if ((order_type == AMEND || order_type == CANCEL) && 
                 get_order_by_ids(trader_id, order_id) == NULL) {
-        puts("htis order_id case 3");
+        // puts("hits order_id case 3");
         return 0;
     }
     // qty and price check
     if (order_type == BUY || order_type == SELL || order_type == AMEND) {
         if (qty<1 || qty>999999 || price<1 || price>999999) {
-            puts("htis qty or price case");
+            // puts("hits qty or price case");
             return 0;
         }
     }
@@ -286,10 +287,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, BUY, order_id, product, qty, price);
-            printf("buy case: %d \n", success_order);
+            // printf("buy case: %d \n", success_order);
 
             if (success_order) {
-                puts("success buy");
+                // puts("success buy");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
@@ -302,10 +303,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, SELL, order_id, product, qty, price);
-            printf("sell case: %d \n", success_order);
+            // printf("sell case: %d \n", success_order);
 
             if (success_order) {
-                puts("success sell");
+                // puts("success sell");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
@@ -318,10 +319,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
             success_order = valid_check(id, AMEND, order_id, product, qty, price);
-            printf("amend case: %d \n", success_order);
+            // printf("amend case: %d \n", success_order);
 
             if (success_order) {
-                puts("success amend");
+                // puts("success amend");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = amend_order(id, order_id, qty, price);
@@ -331,10 +332,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, CANCL_MSG, &order_id) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
             success_order = valid_check(id, CANCEL, order_id, product, qty, price);
-            printf("cancel case: %d \n", success_order);
+            // printf("cancel case: %d \n", success_order);
 
             if (success_order) {
-                puts("success cancel");
+                // puts("success cancel");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = amend_order(id, order_id, 0, 0);

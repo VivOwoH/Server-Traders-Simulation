@@ -105,7 +105,7 @@ order_node add_order(order_node node, orderbook_node book) {
 
     if (book->head_order == NULL) {
         book->head_order = node;
-        puts("add head order");
+        // puts("add head order");
     } 
     else {
         order_node tmp = book->head_order;
@@ -117,18 +117,17 @@ order_node add_order(order_node node, orderbook_node book) {
                 if (tmp->prev != NULL)
                     tmp->prev->next = node; 
                 tmp->prev = node;
-                puts("i will be inserted");
+                // puts("i will be inserted");
                 break;
             }
             if (tmp->next == NULL) { // last node
                 tmp->next = node;
                 node->prev = tmp;
-                puts("i will be last");
+                // puts("i will be last");
                 break;
             }
             tmp = tmp->next;
         }
-        puts("add while return");
     }
     if (node->order_type == SELL_ORDER && 
             (book->tail_order == NULL || node->price <= book->tail_order->price))
