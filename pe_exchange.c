@@ -219,8 +219,9 @@ int valid_check(int trader_id, int order_type, int order_id, char * product, int
     else if ((order_type == BUY || order_type == SELL) && order_id != order_id_ls[trader_id]) {
         puts("htis order_id case 2");
         return 0;
-    } // (3) order_id not in list 
-    else if ((order_type == AMEND || order_type == CANCEL) && order_id >= order_id_ls[trader_id]) {
+    } // (3) order_id not in orderbook
+    else if ((order_type == AMEND || order_type == CANCEL) && 
+                get_order_by_ids(trader_id, order_id) == NULL) {
         puts("htis order_id case 3");
         return 0;
     }
@@ -499,12 +500,18 @@ void report_order_book() {
         while (curr != NULL) {
             qty = curr->qty;
             price = curr->price;
+            if (qty == 0 && price == 0) {
+                assert(curr->next == NULL); // must be last node
+                remove_order(curr, book);
+                break;
+            }
             num_order = 1;
             sec_qty = 0;
             sec_price = 0;
             sec_num_order = 0;
+            
             order_node tmp = curr->next;
-            while (tmp!= NULL && (tmp->price == price)) {
+            while (tmp!= NULL && (tmp->price == price)) { // still on same level
                 if (tmp->order_type == curr->order_type) {
                     qty += tmp->qty;
                     num_order++;
