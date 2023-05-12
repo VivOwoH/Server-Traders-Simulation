@@ -157,18 +157,25 @@ void update_orderbook(orderbook_node book, order_node order) {
 
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) {
     order_node curr = get_order_by_ids(trader_id, order_id);
-    orderbook_node book = get_orderbook_by_product(curr->product);
-    if (curr != NULL) {
-        if (new_price == 0 && curr->order_type == BUY_ORDER) 
-            book->buy_level--;
-        else if (new_price == 0 && curr->order_type == SELL_ORDER)
-            book->sell_level--;
-        else check_unique_price(book, curr, -1);
-        
-        curr->qty = new_qty;
-        curr->price = new_price;
-        update_orderbook(book, curr);
+    if (curr == NULL) {
+        perror("no such order");
+        exit(6);
     }
+    orderbook_node book = get_orderbook_by_product(curr->product);
+    if (book == NULL) {
+        perror("no such orderbook");
+        exit(6);
+    }
+    
+    if (new_price == 0 && curr->order_type == BUY_ORDER) 
+        book->buy_level--;
+    else if (new_price == 0 && curr->order_type == SELL_ORDER)
+        book->sell_level--;
+    else check_unique_price(book, curr, -1);
+    
+    curr->qty = new_qty;
+    curr->price = new_price;
+    update_orderbook(book, curr);
     return curr;
     
     // for (int i = 0; i < orderbook_size; i++) {

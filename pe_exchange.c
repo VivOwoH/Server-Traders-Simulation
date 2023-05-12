@@ -379,6 +379,7 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     // charge last trader 1% of qty*price
     int buy_fd = exchange_pool->fds_set[highest_buy->trader_id];
     int sell_fd = exchange_pool->fds_set[lowest_sell->trader_id];
+    int match_price = -1;
     int final_price = -1;
     int transaction_fee = -1;
     int buy_fill_qty = highest_buy->qty;
@@ -387,23 +388,9 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     printf("lowest:p%d q%d\n", lowest_sell->price, lowest_sell->qty);
     printf("highest:p%d q%d\n", highest_buy->price, highest_buy->qty);
 
-    // -------------------- value + fee -----------------------
-    if (highest_buy->time > lowest_sell->time) {
-        // match sell, new=buy
-        final_price = lowest_sell->price * sell_fill_qty;
-        transaction_fee = (int) (final_price * 0.01 + 0.5); 
-                                            // fast round cast; not valid for neg number
-        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
-            LOG_PREFIX, lowest_sell->order_id, lowest_sell->trader_id, 
-            highest_buy->order_id, highest_buy->trader_id, final_price, transaction_fee);
-    } else {
-        // match buy, new=sell
-        final_price = highest_buy->price * buy_fill_qty;
-        transaction_fee = (int) (final_price * 0.01 + 0.5);
-        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
-            LOG_PREFIX, highest_buy->order_id, highest_buy->trader_id, 
-            lowest_sell->order_id, lowest_sell->trader_id, final_price, transaction_fee);
-    }
+    if (highest_buy->time > lowest_sell->time) // match sell, new=buy
+        match_price = lowest_sell->price;
+    else match_price = highest_buy->price;
 
     // -------------------- Fill + Amend -----------------------
     if (highest_buy->qty > lowest_sell->qty) {
@@ -421,6 +408,24 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     } else {
         amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
         amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
+    }
+
+    // -------------------- value + fee -----------------------
+    if (highest_buy->time > lowest_sell->time) {
+        // match sell, new=buy
+        final_price = match_price * sell_fill_qty;
+        transaction_fee = (int) (final_price * 0.01 + 0.5); 
+                                            // fast round cast; not valid for neg number
+        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
+            LOG_PREFIX, lowest_sell->order_id, lowest_sell->trader_id, 
+            highest_buy->order_id, highest_buy->trader_id, final_price, transaction_fee);
+    } else {
+        // match buy, new=sell
+        final_price = match_price * buy_fill_qty;
+        transaction_fee = (int) (final_price * 0.01 + 0.5);
+        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
+            LOG_PREFIX, highest_buy->order_id, highest_buy->trader_id, 
+            lowest_sell->order_id, lowest_sell->trader_id, final_price, transaction_fee);
     }
     
     // -------------------- write + sig -----------------------
