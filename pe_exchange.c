@@ -161,8 +161,6 @@ int main(int argc, char ** argv) {
             for (int i = 0; i < num_traders; i++) {
                 if (pids[i] == pid) {
                     trader_id = i;
-                    // FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
-                    // FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
                     pids[i] = -1; // indicating closed process
                     break;
                 }
@@ -275,8 +273,13 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             if (line[i] == ';') {
                 line[i] = '\0'; // terminate the message
                 break;
-            } 
+            } else { // not terminated invalid message -> invalid kill
+                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+                kill(pids[id], SIGUSR1);
+                return 0;
+            }
         }
+
         printf("%s [T%d] Parsing command: <%s>\n", LOG_PREFIX, id, line);
 
         sscanf(line, "%s", cmd); // read until first space
