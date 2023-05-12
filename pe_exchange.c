@@ -269,15 +269,18 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         exit(4);
     } 
     else {
+        int terminated = 0;
         for (int i = 0; i < strlen(line); i++){
             if (line[i] == ';') {
                 line[i] = '\0'; // terminate the message
+                terminated = 1;
                 break;
-            } else { // not terminated invalid message -> invalid kill
-                write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-                kill(pids[id], SIGUSR1);
-                return 0;
             }
+        }
+        if (!terminated) { // not terminated invalid message -> invalid kill
+            write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
+            kill(pids[id], SIGUSR1);
+            return 0;
         }
 
         printf("%s [T%d] Parsing command: <%s>\n", LOG_PREFIX, id, line);
