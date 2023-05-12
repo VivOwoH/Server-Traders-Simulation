@@ -33,4 +33,4 @@ static const char * CMD_STRING[] = {
 #define AMD_MSG "AMEND %d %d %d;" // <ORDER_ID> <QTY> <PRICE>
 #define CANCL_MSG "CANCEL %d;" // <ORDER_ID>
 
-#define FILL_MSG "FILL %d %lld;" // <ORDER_ID> <QTY>
+#define FILL_MSG "FILL %d %ld;" // <ORDER_ID> <QTY>
