@@ -258,7 +258,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     // printf("trader_id=%d, fd_trader=%d, fd_exchange=%d\n", id, fd_trader, fd_exchange);
 
     // check the read descriptor is ready
-    int num_bytes = read(fd_trader, line, sizeof(line));
+    int num_bytes = read(fd_trader, line, BUFFLEN);
 
     if (num_bytes == -1) {
         perror("Read failure");
@@ -270,7 +270,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     } 
     else {
         int terminated = 0;
-        for (int i = 0; i < strlen(line); i++){
+        for (int i = 0; i < BUFFLEN; i++){
             if (line[i] == ';') {
                 line[i] = '\0'; // terminate the message
                 terminated = 1;
