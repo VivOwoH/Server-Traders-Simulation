@@ -174,7 +174,6 @@ int main(int argc, char ** argv) {
         if (pid == -1) {
             if (errno == ECHILD) {
                 all_children_terminated = 1;
-                puts("start terminating...");
             }
             else if (errno != EINTR) {
                 perror("waitpid error");
@@ -182,7 +181,7 @@ int main(int argc, char ** argv) {
             }
         }
     }
-    puts("out of loop");
+
     // disconnect
     for (int i = 0; i < num_traders; i++){
         char fifo_buffer_ex[BUFFLEN], fifo_buffer_tr[BUFFLEN];
@@ -487,12 +486,17 @@ void report_order_book() {
                 }
             }
 
-            printf("%s\t\t%s %d @ $%d (%d order)\n", 
+            printf("%s\t\t%s %d @ $%d (%d ", 
                 LOG_PREFIX, CMD_STRING[curr->order_type], qty, price, num_order);
+            if (num_order > 1) puts("orders)\n");
+            else puts("order)\n");
+
             if (sec_num_order > 0) {
-                printf("%s\t\t%s %d @ $%d (%d order)\n", 
+                printf("%s\t\t%s %d @ $%d (%d ", 
                     LOG_PREFIX, CMD_STRING[1-curr->order_type], sec_qty, 
                     sec_price, sec_num_order); // buy=0; sell=1
+                if (sec_num_order > 1) puts("orders)\n");
+                else puts("order)\n");
             }
             curr = tmp;
         }
@@ -611,19 +615,6 @@ void free_mem() {
     free(pids);
     free(trader_pool->fds_set);
     free(exchange_pool->fds_set);
-
-    for (int i = 0; i < product_num; i++) {
-        orderbook_node book = orderbook[i];
-        free(book->trader_fee_index);
-        free(book->trader_qty_index);
-
-        order_node tmp = NULL;
-        while (book->head_order != NULL) {
-            tmp = book->head_order;
-            book->head_order = book->head_order->next;
-            free(tmp);
-        }
-        free(orderbook[i]);
-    }
-    free(orderbook);
+    
+    free_orderbook();
 }

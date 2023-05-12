@@ -59,7 +59,6 @@ order_node create_order(int type, int time, int pid, int trader_id, int order_id
     node->price = price;
     node->prev = NULL;
     node->next = NULL;
-    puts("order created");
     return node;
 }
 
@@ -84,16 +83,15 @@ void check_unique_price(orderbook_node book, order_node node, int val) {
 void add_order(order_node node, orderbook_node book) {
     if (book == NULL) 
         book = get_orderbook_by_product(node->product);
-    puts("add 1");
+
     check_unique_price(book, node, 1);
 
     if (book->head_order == NULL) {
         book->head_order = node;
-        puts("add 2");
+        puts("add head order");
     } 
     else {
         order_node tmp = book->head_order;
-        puts("add while"); 
         while(tmp != NULL) {
             if (node->price > tmp->price) {
                 book->head_order = (tmp==book->head_order) ? node : book->head_order;
@@ -115,7 +113,6 @@ void add_order(order_node node, orderbook_node book) {
         }
         puts("add while return");
     }
-    puts("add 3");
     if (node->order_type == SELL_ORDER && 
             (book->tail_order == NULL || book->tail_order->price >= node->price))
         book->tail_order = node;
@@ -154,4 +151,21 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
         }
     }
     return NULL;
+}
+
+void free_orderbook() {
+    for (int i = 0; i < orderbook_size; i++) {
+        orderbook_node book = orderbook[i];
+        free(book->trader_fee_index);
+        free(book->trader_qty_index);
+
+        order_node tmp = NULL;
+        while (book->head_order != NULL) {
+            tmp = book->head_order;
+            book->head_order = book->head_order->next;
+            free(tmp);
+        }
+        free(orderbook[i]);
+    }
+    free(orderbook);
 }
