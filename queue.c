@@ -170,13 +170,14 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
         exit(6);
     }
     
-    if (new_price == 0 && curr->order_type == BUY_ORDER) {
-        book->buy_level--;
-        printf("amend buy level:%d\n", book->buy_level);
-    } else if (new_price == 0 && curr->order_type == SELL_ORDER) {
-        book->sell_level--;
-        printf("amend sell level:%d\n", book->sell_level);
-    } else check_unique_price(book, curr, -1);
+    // if (new_price == 0 && curr->order_type == BUY_ORDER) {
+    //     book->buy_level--;
+    //     printf("amend buy level:%d\n", book->buy_level);
+    // } else if (new_price == 0 && curr->order_type == SELL_ORDER) {
+    //     book->sell_level--;
+    //     printf("amend sell level:%d\n", book->sell_level);
+    // } else 
+    check_unique_price(book, curr, -1);
     
     curr->qty = new_qty;
     curr->price = new_price;
