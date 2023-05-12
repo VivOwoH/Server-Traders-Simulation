@@ -28,6 +28,7 @@ void market_alert(int pid, order_node order);
 void parse_products(char* filename);
 void match_order();
 void report_order_book();
+void calculate_total_ex_fee();
 void free_mem();
 
 #endif

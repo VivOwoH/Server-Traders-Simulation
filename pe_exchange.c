@@ -194,6 +194,7 @@ int main(int argc, char ** argv) {
         unlink(fifo_buffer_tr);
     }
 
+    calculate_total_ex_fee();
     // free all malloced memory
     free_mem();
 
@@ -588,6 +589,17 @@ void connect_pipes(int i) {
     printf("%s Connected to /tmp/pe_exchange_%d\n", LOG_PREFIX, i);
     printf("%s Connected to /tmp/pe_trader_%d\n", LOG_PREFIX, i);
     
+    return;
+}
+
+void calculate_total_ex_fee() {
+    for (int i = 0; i < product_num; i++) {
+        orderbook_node book = orderbook[i];
+        int sum = 0;
+        for (int j = 0; j < num_traders; j++)
+            sum += book->trader_fee_index[i];
+        total_ex_fee += abs(sum);
+    }
     return;
 }
 
