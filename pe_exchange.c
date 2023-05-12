@@ -112,6 +112,7 @@ int main(int argc, char ** argv) {
             exit(1);
         }
     }
+    usleep(50000);
     
     // register signal handler
     sigset_t mask;
