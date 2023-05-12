@@ -5,6 +5,8 @@ TEST_TARGET = autotest.sh
 CC = gcc
 CFLAGS     = -Wall -Wuninitialized -Wmaybe-uninitialized -Werror -Wvla -O0 -std=c11 -g -fsanitize=address,leak,undefined
 LDFLAGS    = -lm -fsanitize=address,leak,undefined
+# CFLAGS     = -Wall -Wuninitialized -Wmaybe-uninitialized -Werror -Wvla -O0 -std=c11 -g
+# LDFLAGS    = -lm 
 BINARIES   = pe_exchange pe_trader 
 EX_SRC        = pe_exchange.c queue.c
 TR_SRC        = pe_trader.c queue.c 

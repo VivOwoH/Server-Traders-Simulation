@@ -322,8 +322,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         if (!success_order) {
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
             kill(pids[id], SIGUSR1);
-        } else 
+        } else  {
             market_alert(pids[id], order);
+            free(order);
+        } 
     }
     return success_order;
 }
@@ -488,15 +490,15 @@ void report_order_book() {
 
             printf("%s\t\t%s %d @ $%d (%d ", 
                 LOG_PREFIX, CMD_STRING[curr->order_type], qty, price, num_order);
-            if (num_order > 1) puts("orders)\n");
-            else puts("order)\n");
+            if (num_order > 1) puts("orders)");
+            else puts("order)");
 
             if (sec_num_order > 0) {
                 printf("%s\t\t%s %d @ $%d (%d ", 
                     LOG_PREFIX, CMD_STRING[1-curr->order_type], sec_qty, 
                     sec_price, sec_num_order); // buy=0; sell=1
-                if (sec_num_order > 1) puts("orders)\n");
-                else puts("order)\n");
+                if (sec_num_order > 1) puts("orders)");
+                else puts("order)");
             }
             curr = tmp;
         }
