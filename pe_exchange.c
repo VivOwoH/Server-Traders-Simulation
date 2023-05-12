@@ -265,8 +265,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
 
             if (success_order) {
                 puts("success write");
-                int c = write(fd_exchange, write_line, strlen(write_line));
-                printf("%d\n", c);
+                write(fd_exchange, write_line, strlen(write_line));
+                kill(pids[id], SIGUSR1);
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
@@ -281,8 +281,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
 
             if (success_order) {
                 puts("success sell");
-                int c = write(fd_exchange, write_line, strlen(write_line));
-                printf("%d\n", c);
+                write(fd_exchange, write_line, strlen(write_line));
+                kill(pids[id], SIGUSR1);
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
@@ -298,6 +298,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             if (success_order) {
                 puts("success amend");
                 write(fd_exchange, write_line, strlen(write_line));
+                kill(pids[id], SIGUSR1);
                 order = amend_order(id, order_id, qty, price);
             }
         }
@@ -310,21 +311,17 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             if (success_order) {
                 puts("success cancel");
                 write(fd_exchange, write_line, strlen(write_line));
+                kill(pids[id], SIGUSR1);
                 order = amend_order(id, order_id, 0, 0);
             } 
         }
         else { // invalid command
-            puts("invalid");  
             success_order = 0;
         }
 
-        if (!success_order)
+        if (!success_order) {
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
-        
-        puts("send signal");
-        if (kill(pids[id], SIGUSR1) == -1) {
-            perror("signal: kill failed");
-            exit(1);
+            kill(pids[id], SIGUSR1);
         }
 
         if (success_order)
