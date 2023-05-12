@@ -252,6 +252,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
     int order_id = -1;
     int qty = -1;
     int price = -1;
+    int dummy = -1;
     int success_order = 1;
     order_node order = NULL;
 
@@ -282,7 +283,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         char write_line[BUFFLEN];
         
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
-                    sscanf(line, BUY_MSG, &order_id, product, &qty, &price) == 4) {
+                sscanf(line, "BUY %d %s %d %d; %d", &order_id, product, &qty, &price, &dummy) == 4) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, BUY, order_id, product, qty, price);
             // printf("buy case: %d \n", success_order);
@@ -298,7 +299,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
-                    sscanf(line, SELL_MSG, &order_id, product, &qty, &price) == 4) {
+                sscanf(line, "SELL %d %s %d %d; %d", &order_id, product, &qty, &price, &dummy) == 4) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, SELL, order_id, product, qty, price);
             // printf("sell case: %d \n", success_order);
@@ -314,7 +315,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
-                    sscanf(line, AMD_MSG, &order_id, &qty, &price) == 3) {
+                sscanf(line, "AMEND %d %d %d; %d", &order_id, &qty, &price, &dummy) == 3) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
             success_order = valid_check(id, AMEND, order_id, product, qty, price);
             // printf("amend case: %d \n", success_order);
@@ -328,7 +329,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
-                    sscanf(line, CANCL_MSG, &order_id) == 1) {
+                sscanf(line, "CANCEL %d; %d", &order_id, &dummy) == 1) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
             success_order = valid_check(id, CANCEL, order_id, product, qty, price);
             // printf("cancel case: %d \n", success_order);
