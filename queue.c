@@ -180,7 +180,6 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price, 
         perror("no such order");
         exit(6);
     }
-    // printf("%d %s %d %d %d\n", curr->trader_id, curr->product, curr->order_id, curr->qty, curr->price);
     orderbook_node book = get_orderbook_by_product(curr->product);
     if (book == NULL) {
         perror("no such orderbook");
