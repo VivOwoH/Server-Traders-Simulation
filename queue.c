@@ -42,8 +42,7 @@ orderbook_node get_orderbook_by_product(char * product) {
         if (strcmp(orderbook[i]->product, product)==0)
             return orderbook[i];
     }
-    perror("empty orderbook");
-    exit(6);
+    return NULL;
 }
 
 order_node get_order_by_ids(int trader_id, int order_id) {
