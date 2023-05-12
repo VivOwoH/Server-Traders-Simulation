@@ -28,9 +28,9 @@ static const char * CMD_STRING[] = {
 #define MARKET_MSG "MARKET %s %s %d %d;" //<ORDER TYPE> <PRODUCT> <QTY> <PRICE>
 
 // cmd msg
-#define BUY_MSG "BUY %d %s %d %d;" // <ORDER_ID> <PRODUCT> <QTY> <PRICE>
-#define SELL_MSG "SELL %d %s %d %d;" // <ORDER_ID> <PRODUCT> <QTY> <PRICE>
-#define AMD_MSG "AMEND %d %d %d;" // <ORDER_ID> <QTY> <PRICE>
-#define CANCL_MSG "CANCEL %d;" // <ORDER_ID>
+#define BUY_MSG "BUY %d %s %d %d; %c" // <ORDER_ID> <PRODUCT> <QTY> <PRICE>
+#define SELL_MSG "SELL %d %s %d %d; %c" // <ORDER_ID> <PRODUCT> <QTY> <PRICE>
+#define AMD_MSG "AMEND %d %d %d; %c" // <ORDER_ID> <QTY> <PRICE>
+#define CANCL_MSG "CANCEL %d; %c" // <ORDER_ID>
 
 #define FILL_MSG "FILL %d %lld;" // <ORDER_ID> <QTY>
