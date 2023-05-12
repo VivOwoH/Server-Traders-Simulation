@@ -10,7 +10,7 @@ int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
 int * order_id_ls; // store next increment order_id
-long long total_ex_fee = 0;
+long total_ex_fee = 0;
 pid_t * pids;
 struct fd_pool ex_fds; // exchange file descriptors
 struct fd_pool tr_fds; // trader file descriptors
@@ -195,7 +195,7 @@ int main(int argc, char ** argv) {
     free_mem();
 
     printf("%s Trading completed\n", LOG_PREFIX);
-    printf("%s Exchange fees collected: $%lld\n", LOG_PREFIX, total_ex_fee);
+    printf("%s Exchange fees collected: $%ld\n", LOG_PREFIX, total_ex_fee);
     
     return 0;
 }
@@ -386,11 +386,11 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
     // charge last trader 1% of qty*price
     int buy_fd = exchange_pool->fds_set[highest_buy->trader_id];
     int sell_fd = exchange_pool->fds_set[lowest_sell->trader_id];
-    long long match_price = -1;
-    long long final_price = -1;
-    long long transaction_fee = -1;
-    long long buy_fill_qty = highest_buy->qty;
-    long long sell_fill_qty = lowest_sell->qty;
+    long match_price = -1;
+    long final_price = -1;
+    long transaction_fee = -1;
+    long buy_fill_qty = highest_buy->qty;
+    long sell_fill_qty = lowest_sell->qty;
 
     // printf("lowest:p%d q%d\n", lowest_sell->price, lowest_sell->qty);
     // printf("highest:p%d q%d\n", highest_buy->price, highest_buy->qty);
@@ -422,9 +422,9 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
     if (highest_buy->time > lowest_sell->time) {
         // match sell price, buyer has transaction
         final_price = match_price * sell_fill_qty;
-        transaction_fee = (long long) (final_price * 0.01 + 0.5); 
+        transaction_fee = (long) (final_price * 0.01 + 0.5); 
                                             // fast round cast; not valid for neg number
-        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%lld, fee: $%lld.\n", 
+        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%ld, fee: $%ld.\n", 
             LOG_PREFIX, lowest_sell->order_id, lowest_sell->trader_id, 
             highest_buy->order_id, highest_buy->trader_id, final_price, transaction_fee);
         
@@ -436,8 +436,8 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
     else {
         // match buy price, seller has transaction
         final_price = match_price * buy_fill_qty;
-        transaction_fee = (long long) (final_price * 0.01 + 0.5);
-        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%lld, fee: $%lld.\n", 
+        transaction_fee = (long) (final_price * 0.01 + 0.5);
+        printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%ld, fee: $%ld.\n", 
             LOG_PREFIX, highest_buy->order_id, highest_buy->trader_id, 
             lowest_sell->order_id, lowest_sell->trader_id, final_price, transaction_fee);
 
@@ -509,10 +509,10 @@ void match_order() {
 }
 
 void report_order_book() {
-    long qty = 0;
+    int qty = 0;
     int price = 0;
     int num_order = 0;
-    long sec_qty = 0;
+    int sec_qty = 0;
     int sec_price = 0;
     int sec_num_order = 0;
 
@@ -551,13 +551,13 @@ void report_order_book() {
                 }
             }
 
-            printf("%s\t\t%s %ld @ $%d (%d ", 
+            printf("%s\t\t%s %d @ $%d (%d ", 
                 LOG_PREFIX, CMD_STRING[curr->order_type], qty, price, num_order);
             if (num_order > 1) puts("orders)");
             else puts("order)");
 
             if (sec_num_order > 0) {
-                printf("%s\t\t%s %ld @ $%d (%d ", 
+                printf("%s\t\t%s %d @ $%d (%d ", 
                     LOG_PREFIX, CMD_STRING[1-curr->order_type], sec_qty, 
                     sec_price, sec_num_order); // buy=0; sell=1
                 if (sec_num_order > 1) puts("orders)");
@@ -573,10 +573,10 @@ void report_order_book() {
         for (int j = 0; j < product_num; j++) {
             orderbook_node book = orderbook[j];
             if (j == product_num-1)
-                printf("%s %lld ($%lld)\n", book->product, 
+                printf("%s %ld ($%ld)\n", book->product, 
                         book->trader_qty_index[i], book->trader_fee_index[i]);
             else 
-                printf("%s %lld ($%lld), ", book->product, 
+                printf("%s %ld ($%ld), ", book->product, 
                         book->trader_qty_index[i], book->trader_fee_index[i]);
         }  
     }
