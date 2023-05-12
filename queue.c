@@ -70,9 +70,6 @@ order_node create_order(int type, int time, int pid, int trader_id, int order_id
     node->pid = pid;
     node->trader_id = trader_id;
     node->order_id = order_id;
-    node->product = (char*) malloc((PRODUCT_LEN+1) * sizeof(char));
-    memcpy(node->product, product, strlen(product));
-    node->product[strlen(product)-1]='\0';
     node->product = product;
     node->qty = qty;
     node->price = price;
@@ -236,7 +233,6 @@ void free_orderbook() {
         while (book->head_order != NULL) {
             tmp = book->head_order;
             book->head_order = book->head_order->next;
-            free(tmp->product);
             free(tmp);
         }
         free(orderbook[i]);
