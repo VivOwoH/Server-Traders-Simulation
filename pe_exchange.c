@@ -10,7 +10,7 @@ int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
 int * order_id_ls; // store next increment order_id
-int total_ex_fee = 0;
+long long total_ex_fee = 0;
 pid_t * pids;
 struct fd_pool ex_fds; // exchange file descriptors
 struct fd_pool tr_fds; // trader file descriptors
@@ -197,7 +197,7 @@ int main(int argc, char ** argv) {
     free_mem();
 
     printf("%s Trading completed\n", LOG_PREFIX);
-    printf("%s Exchange fees collected: $%d\n", LOG_PREFIX, total_ex_fee);
+    printf("%s Exchange fees collected: $%lld\n", LOG_PREFIX, total_ex_fee);
     
     return 0;
 }
@@ -656,7 +656,7 @@ void connect_pipes(int i) {
 void calculate_total_ex_fee() {
     for (int i = 0; i < product_num; i++) {
         orderbook_node book = orderbook[i];
-        int sum = 0;
+        long long sum = 0;
         for (int j = 0; j < num_traders; j++)
             sum += book->trader_fee_index[j];
         total_ex_fee += abs(sum);
