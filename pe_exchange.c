@@ -478,12 +478,10 @@ void report_order_book() {
             while (tmp!= NULL && (tmp->price == price)) {
                 if (tmp->order_type == curr->order_type) {
                     qty += tmp->qty;
-                    price += tmp->price;
                     num_order++;
                     tmp = tmp->next;
                 } else {
                     sec_qty += tmp->qty;
-                    sec_price += tmp->price;
                     sec_num_order++;
                 }
             }

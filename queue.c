@@ -102,11 +102,13 @@ void add_order(order_node node, orderbook_node book) {
                 if (tmp->prev != NULL)
                     tmp->prev->next = node; 
                 tmp->prev = node;
+                puts("i will be inserted");
                 break;
             }
             if (tmp->next == NULL) { // last node
                 tmp->next = node;
                 node->prev = tmp;
+                puts("i will be last");
             }
             tmp = tmp->next;
         }
