@@ -108,7 +108,7 @@ int main(int argc, char ** argv) {
         char msg[] = MARKET_OPEN_MSG;
         write(exchange_pool->fds_set[i], msg, strlen(msg));
         if (kill(pids[i], SIGUSR1) == -1) {
-            perror("signal: kill failed");
+            perror("(1)signal: kill failed");
             exit(1);
         }
     }
@@ -367,14 +367,14 @@ void market_alert(int pid, order_node order) {
         if (pid != pids[i] && FD_ISSET(exchange_pool->fds_set[i], &exchange_pool->rfds)) {
             write(exchange_pool->fds_set[i], market_line, strlen(market_line));
             if (kill(pids[i], SIGUSR1)==-1) {
-                perror("signal: kill failed");
+                perror("(2)signal: kill failed");
                 exit(1);
             }
         }
     }
 }
 
-void match_order_report(order_node highest_buy, order_node lowest_sell) {
+void match_order_report(orderbook_node book, order_node highest_buy, order_node lowest_sell) {
     // matching price is the price of the older order
     // charge last trader 1% of qty*price
     int buy_fd = exchange_pool->fds_set[highest_buy->trader_id];
@@ -385,8 +385,8 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     int buy_fill_qty = highest_buy->qty;
     int sell_fill_qty = lowest_sell->qty;
 
-    printf("lowest:p%d q%d\n", lowest_sell->price, lowest_sell->qty);
-    printf("highest:p%d q%d\n", highest_buy->price, highest_buy->qty);
+    // printf("lowest:p%d q%d\n", lowest_sell->price, lowest_sell->qty);
+    // printf("highest:p%d q%d\n", highest_buy->price, highest_buy->qty);
 
     if (highest_buy->time > lowest_sell->time) // match sell, new=buy
         match_price = lowest_sell->price;
@@ -412,20 +412,31 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
 
     // -------------------- value + fee -----------------------
     if (highest_buy->time > lowest_sell->time) {
-        // match sell, new=buy
+        // match sell price, buyer has transaction
         final_price = match_price * sell_fill_qty;
         transaction_fee = (int) (final_price * 0.01 + 0.5); 
                                             // fast round cast; not valid for neg number
         printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
             LOG_PREFIX, lowest_sell->order_id, lowest_sell->trader_id, 
             highest_buy->order_id, highest_buy->trader_id, final_price, transaction_fee);
-    } else {
-        // match buy, new=sell
+        
+        book->trader_qty_index[highest_buy->trader_id] += sell_fill_qty;
+        book->trader_fee_index[highest_buy->trader_id] -= (final_price + transaction_fee);
+        book->trader_qty_index[lowest_sell->trader_id] -= sell_fill_qty;
+        book->trader_fee_index[lowest_sell->trader_id] += final_price;
+    } 
+    else {
+        // match buy price, seller has transaction
         final_price = match_price * buy_fill_qty;
         transaction_fee = (int) (final_price * 0.01 + 0.5);
         printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%d, fee: $%d.\n", 
             LOG_PREFIX, highest_buy->order_id, highest_buy->trader_id, 
             lowest_sell->order_id, lowest_sell->trader_id, final_price, transaction_fee);
+
+        book->trader_qty_index[highest_buy->trader_id] += buy_fill_qty;
+        book->trader_fee_index[highest_buy->trader_id] -= final_price;
+        book->trader_qty_index[lowest_sell->trader_id] -= buy_fill_qty;
+        book->trader_fee_index[lowest_sell->trader_id] += (final_price - transaction_fee);
     }
     
     // -------------------- write + sig -----------------------
@@ -433,14 +444,14 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     snprintf(write_line, BUFFLEN, FILL_MSG, highest_buy->order_id, buy_fill_qty);
     write(buy_fd, write_line, strlen(write_line));
     if (kill(highest_buy->pid, SIGUSR1)==-1) {
-        perror("signal: kill failed");
+        perror("(3)signal: kill failed");
         exit(1);
     }
 
     snprintf(write_line_2, BUFFLEN, FILL_MSG, lowest_sell->order_id, sell_fill_qty);
     write(sell_fd, write_line_2, strlen(write_line_2));
     if (kill(lowest_sell->pid, SIGUSR1)==-1) {
-        perror("signal: kill failed");
+        perror("(4)signal: kill failed");
         exit(1);
     }
 }
@@ -482,7 +493,7 @@ void match_order() {
             
             // match success
             if (highest_buy != NULL && (highest_buy->price >= lowest_sell->price)) {
-                match_order_report(highest_buy, lowest_sell);
+                match_order_report(book, highest_buy, lowest_sell);
             } else cont = 0;
         } 
     }

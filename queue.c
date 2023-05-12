@@ -92,7 +92,6 @@ void check_unique_price(orderbook_node book, order_node node, int val) {
         book->buy_level += val;
     else
         book->sell_level += val;
-    puts("returning from check");
     return;
 }
 
@@ -101,7 +100,8 @@ order_node add_order(order_node node, orderbook_node book) {
     if (book == NULL) 
         book = get_orderbook_by_product(node->product);
 
-    check_unique_price(book, node, 1);
+    if (node->price != 0)
+        check_unique_price(book, node, 1);
 
     if (book->head_order == NULL) {
         book->head_order = node;
