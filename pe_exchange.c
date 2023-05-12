@@ -269,7 +269,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 add_order(order);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
-                write(fd_exchange, write_line, strlen(write_line));
+                int c = write(fd_exchange, write_line, strlen(write_line));
+                printf("%d\n", c);
             }
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
@@ -284,7 +285,8 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 add_order(order);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
-                write(fd_exchange, write_line, strlen(write_line));
+                int c = write(fd_exchange, write_line, strlen(write_line));
+                printf("%d\n", c);
             }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
