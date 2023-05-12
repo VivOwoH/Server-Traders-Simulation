@@ -295,7 +295,6 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
-                printf("%d %s %d %d %d\n", order->trader_id, order->product, order->order_id, order->qty, order->price);
                 add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter

@@ -5,6 +5,7 @@
 
 #define BUY_ORDER 0
 #define SELL_ORDER 1
+#define PRODUCT_LEN 16
 
 typedef void handler_t(int, siginfo_t *, void *);
 
