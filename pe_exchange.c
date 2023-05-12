@@ -267,8 +267,9 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 puts("success write");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
-                order = add_order(create_order(BUY_ORDER, order_time, pids[id], id, 
-                                    order_id, product, qty, price), NULL);
+                order_node tmp = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
+                order = add_order(tmp, NULL);
+                free(tmp);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
             }
@@ -283,8 +284,9 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 puts("success sell");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
-                order = add_order(create_order(SELL_ORDER, order_time, pids[id], id, 
-                                        order_id, product, qty, price), NULL);
+                order_node tmp = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
+                order = add_order(tmp, NULL);
+                free(tmp);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
             }
@@ -413,7 +415,7 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
 }
 
 void match_order() {
-    puts("matching order......");
+    puts("start match......");
     orderbook_node book = NULL;
     order_node highest_buy = NULL;
     order_node lowest_sell = NULL;
@@ -424,6 +426,7 @@ void match_order() {
         int cont = 1;
         lowest_sell = book->tail_order;
         while (cont && lowest_sell != NULL) {
+            puts("matching order......");
             lowest_sell = book->tail_order;
         
             head_curr = book->head_order;

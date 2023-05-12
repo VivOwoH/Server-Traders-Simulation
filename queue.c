@@ -127,7 +127,8 @@ void update_orderbook(orderbook_node book, order_node order) {
         return;
 
     // remove this order from book
-    order->next->prev = NULL;
+    if (order->next != NULL) 
+        order->next->prev = NULL;
     order->prev->next = NULL;
     order->next = NULL;
     order->prev = NULL;    
