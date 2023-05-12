@@ -597,7 +597,7 @@ void calculate_total_ex_fee() {
         orderbook_node book = orderbook[i];
         int sum = 0;
         for (int j = 0; j < num_traders; j++)
-            sum += book->trader_fee_index[i];
+            sum += book->trader_fee_index[j];
         total_ex_fee += abs(sum);
     }
     return;
