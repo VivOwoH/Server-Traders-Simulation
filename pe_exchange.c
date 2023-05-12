@@ -9,7 +9,7 @@
 int product_num = 0;
 char ** product_ls;
 int num_traders = 0;
-int * order_id_ls;
+int * order_id_ls; // store next increment order_id
 int total_ex_fee = 0;
 pid_t * pids;
 struct fd_pool ex_fds; // exchange file descriptors
@@ -209,18 +209,29 @@ int valid_check(int trader_id, int order_type, int order_id, char * product, int
     // QTY, PRICE: integer, 1 - 999999
     // order_id->all; qty,price->buy,sell,amend; product->buy,sell
     int valid = 1;
-    printf("%d %d %d %s %d %d\n", trader_id, order_type, order_id, product, qty, price);
-    if (order_id < 0 || order_id > 999999 || order_id != order_id_ls[trader_id]) {
-        puts("htis order_id case");
+    printf("%d %d %d %s %d %d order_ls:%d\n", trader_id, order_type, 
+        order_id, product, qty, price, order_id_ls[trader_id]);
+    // (1) order id general
+    if (order_id < 0 || order_id > 999999) {
+        puts("htis order_id case 1");
+        return 0;
+    } // (2) order id increment 
+    else if ((order_type == BUY || order_type == SELL) && order_id != order_id_ls[trader_id]) {
+        puts("htis order_id case 2");
+        return 0;
+    } // (3) order_id not in list 
+    else if ((order_type == AMEND || order_type == CANCEL) && order_id >= order_id_ls[trader_id]) {
+        puts("htis order_id case 3");
         return 0;
     }
+    // qty and price check
     if (order_type == BUY || order_type == SELL || order_type == AMEND) {
         if (qty<1 || qty>999999 || price<1 || price>999999) {
             puts("htis qty or price case");
             return 0;
         }
     }
-
+    // product check
     int found = 0;
     if (order_type == BUY || order_type == SELL) {
         for (int i = 0; i < product_num; i++) {
@@ -271,10 +282,10 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, BUY_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, BUY, order_id, product, qty, price);
-            printf("%d \n", success_order);
+            printf("buy case: %d \n", success_order);
 
             if (success_order) {
-                puts("success write");
+                puts("success buy");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
@@ -287,7 +298,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, SELL_MSG, &order_id, product, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             success_order = valid_check(id, SELL, order_id, product, qty, price);
-            printf("%d \n", success_order);
+            printf("sell case: %d \n", success_order);
 
             if (success_order) {
                 puts("success sell");
@@ -303,7 +314,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, AMD_MSG, &order_id, &qty, &price) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
             success_order = valid_check(id, AMEND, order_id, product, qty, price);
-            printf("%d \n", success_order);
+            printf("amend case: %d \n", success_order);
 
             if (success_order) {
                 puts("success amend");
@@ -316,7 +327,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                     sscanf(line, CANCL_MSG, &order_id) != EOF) {
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
             success_order = valid_check(id, CANCEL, order_id, product, qty, price);
-            printf("%d \n", success_order);
+            printf("cancel case: %d \n", success_order);
 
             if (success_order) {
                 puts("success cancel");
@@ -626,6 +637,7 @@ void free_mem() {
     for (int i = 0; i < product_num; i++) {
         free(product_ls[i]);
     }
+    free(order_id_ls);
     free(product_ls);
     free(pids);
     free(trader_pool->fds_set);
