@@ -35,8 +35,8 @@ struct product_orders {
     char *product;
     order_node head_order;
     order_node tail_order;
-    int * trader_qty_index; // number of this product held per trader
-    int * trader_fee_index; // exchange fee put in for this product per trader
+    long long * trader_qty_index; // number of this product held per trader
+    long long * trader_fee_index; // exchange fee put in for this product per trader
     int buy_level;
     int sell_level;
 };

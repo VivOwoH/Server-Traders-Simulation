@@ -414,7 +414,7 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
     if (highest_buy->time > lowest_sell->time) {
         // match sell price, buyer has transaction
         final_price = match_price * sell_fill_qty;
-        transaction_fee = (int) (final_price * 0.01 + 0.5); 
+        transaction_fee = (long long) (final_price * 0.01 + 0.5); 
                                             // fast round cast; not valid for neg number
         printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%lld, fee: $%lld.\n", 
             LOG_PREFIX, lowest_sell->order_id, lowest_sell->trader_id, 
@@ -428,7 +428,7 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
     else {
         // match buy price, seller has transaction
         final_price = match_price * buy_fill_qty;
-        transaction_fee = (int) (final_price * 0.01 + 0.5);
+        transaction_fee = (long long) (final_price * 0.01 + 0.5);
         printf("%s Match: Order %d [T%d], New Order %d [T%d], value: $%lld, fee: $%lld.\n", 
             LOG_PREFIX, highest_buy->order_id, highest_buy->trader_id, 
             lowest_sell->order_id, lowest_sell->trader_id, final_price, transaction_fee);
@@ -565,10 +565,10 @@ void report_order_book() {
         for (int j = 0; j < product_num; j++) {
             orderbook_node book = orderbook[j];
             if (j == product_num-1)
-                printf("%s %d ($%d)\n", book->product, 
+                printf("%s %lld ($%lld)\n", book->product, 
                         book->trader_qty_index[i], book->trader_fee_index[i]);
             else 
-                printf("%s %d ($%d), ", book->product, 
+                printf("%s %lld ($%lld), ", book->product, 
                         book->trader_qty_index[i], book->trader_fee_index[i]);
         }  
     }
