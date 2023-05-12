@@ -267,6 +267,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 puts("success write");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
+                market_alert(pids[id], order);
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
@@ -283,6 +284,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 puts("success sell");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
+                market_alert(pids[id], order);
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order, NULL);
                 order_id_ls[id] = order_id + 1;
@@ -299,6 +301,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 puts("success amend");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
+                market_alert(pids[id], order);
                 order = amend_order(id, order_id, qty, price);
             }
         }
@@ -312,6 +315,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 puts("success cancel");
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
+                market_alert(pids[id], order);
                 order = amend_order(id, order_id, 0, 0);
             } 
         }
@@ -323,14 +327,12 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
             kill(pids[id], SIGUSR1);
         }
-
-        if (success_order)
-            market_alert(pids[id], order);
     }
     return success_order;
 }
 
 void market_alert(int pid, order_node order) {
+    puts("market alerting...");
     if (order == NULL) {
         perror("null order");
         exit(6);
