@@ -59,7 +59,7 @@ order_node create_order(int type, int time, int pid, int trader_id, int order_id
     node->price = price;
     node->prev = NULL;
     node->next = NULL;
-
+    puts("order created");
     return node;
 }
 
@@ -76,20 +76,24 @@ void check_unique_price(orderbook_node book, order_node node, int val) {
         book->buy_level += val;
     else
         book->sell_level += val;
+    puts("returning from check");
+    return;
 }
 
 // sorted by price-time priority
 void add_order(order_node node, orderbook_node book) {
     if (book == NULL) 
         book = get_orderbook_by_product(node->product);
-
+    puts("add 1");
     check_unique_price(book, node, 1);
 
     if (book->head_order == NULL) {
         book->head_order = node;
+        puts("add 2");
     } 
     else {
-        order_node tmp = book->head_order; 
+        order_node tmp = book->head_order;
+        puts("add while"); 
         while(tmp != NULL) {
             if (node->price > tmp->price) {
                 book->head_order = (tmp==book->head_order) ? node : book->head_order;
@@ -106,11 +110,13 @@ void add_order(order_node node, orderbook_node book) {
             }
             tmp = tmp->next;
         }
+        puts("add while return");
     }
+    puts("add 3");
     if (node->order_type == SELL_ORDER && 
             (book->tail_order == NULL || book->tail_order->price >= node->price))
         book->tail_order = node;
-
+    
     return;
 }
 

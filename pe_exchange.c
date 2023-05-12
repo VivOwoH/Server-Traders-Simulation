@@ -318,7 +318,6 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         else { // invalid command
             success_order = 0;
         }
-        puts("did i reach here or stuck in loop?");
 
         if (!success_order) {
             write(fd_exchange, MARKET_IVD_MSG, strlen(MARKET_IVD_MSG));
