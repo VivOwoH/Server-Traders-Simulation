@@ -659,7 +659,7 @@ void calculate_total_ex_fee() {
         long long sum = 0;
         for (int j = 0; j < num_traders; j++)
             sum += book->trader_fee_index[j];
-        total_ex_fee += abs(sum);
+        total_ex_fee += llabs(sum);
     }
     return;
 }
