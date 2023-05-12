@@ -169,60 +169,15 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
         perror("no such orderbook");
         exit(6);
     }
-    
-    // if (new_price == 0 && curr->order_type == BUY_ORDER) {
-    //     book->buy_level--;
-    //     printf("amend buy level:%d\n", book->buy_level);
-    // } else if (new_price == 0 && curr->order_type == SELL_ORDER) {
-    //     book->sell_level--;
-    //     printf("amend sell level:%d\n", book->sell_level);
-    // } else 
     check_unique_price(book, curr, -1);
     
     curr->qty = new_qty;
     curr->price = new_price;
     update_orderbook(book, curr);
     return curr;
-    
-    // for (int i = 0; i < orderbook_size; i++) {
-    //     curr = orderbook[i]->head_order;
-    //     while (curr != NULL) {
-    //         if (curr->trader_id == trader_id && curr->order_id == order_id) {
-    //             if (new_price == 0 && curr->order_type == BUY_ORDER) 
-    //                 orderbook[i]->buy_level--;
-    //             else if (new_price == 0 && curr->order_type == SELL_ORDER)
-    //                 orderbook[i]->sell_level--;
-    //             else check_unique_price(orderbook[i], curr, -1);
-                
-    //             curr->qty = new_qty;
-    //             curr->price = new_price;
-    //             update_orderbook(orderbook[i], curr);
-    //             return curr;
-    //         }
-    //         curr = curr->next;
-    //     }
-    // }
 }
 
 void remove_order(order_node order, orderbook_node book) {
-    // int found = 0;
-    // order_node curr = NULL;
-    // orderbook_node book = NULL;
-    // for (int i = 0; i < orderbook_size; i++) {
-    //     book = orderbook[i];
-    //     curr = book->head_order;
-    //     while (curr != NULL) {
-    //         if (curr->trader_id == trader_id && curr->order_id == order_id) {
-    //             found = 1;
-    //             break;
-    //         }
-    //         curr = curr->next;
-    //     }
-    //     if (found) break;
-    // }
-
-    // if (!found) return;
-
     // tail order update
     if (order == book->tail_order) {
         book->tail_order = NULL;
