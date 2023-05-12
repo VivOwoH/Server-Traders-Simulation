@@ -120,6 +120,7 @@ int event() {
             snprintf(write_line, BUFFLEN, BUY_MSG, order_id, product, qty, price);
             msg_sent = 1;
             snprintf(last_msg, strlen(write_line)+1, "%s", write_line);
+            printf("%s", last_msg);
             write(fd_write, write_line, strlen(write_line));
             kill(parent_pid, SIGUSR1);
         }
