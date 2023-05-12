@@ -34,37 +34,6 @@ void sigusr1_handler(int s, siginfo_t *info, void *context) {
     return;
 }
 
-// void sigchld_hanlder(int s, siginfo_t *info, void *context) {
-//     pid_t pid = 0;
-//     int status = -1;
-//     int trader_id = -1;
-    
-//     // wait for all children process to exit
-//     while ( (pid = waitpid(-1, &status, WNOHANG)) > 0) {
-//         for (int i = 0; i < num_traders; i++) {
-//             if (pids[i] == pid) {
-//                 trader_id = i;
-//                 // close(trader_pool->fds_set[i]);
-//                 // close(exchange_pool->fds_set[i]);
-//                 FD_CLR(trader_pool->fds_set[i], &trader_pool->rfds);
-//                 FD_CLR(exchange_pool->fds_set[i], &exchange_pool->rfds);
-//                 break;
-//             }
-//         }
-//         printf("%s Trader %d disconnected\n", LOG_PREFIX, trader_id);
-//     }
-
-//     if (pid == -1) {
-//         if (errno == ECHILD) {
-//             all_children_terminated = 1;
-//         }
-//         else if (errno != EINTR) {
-//             perror("waitpid error");
-//             exit(6);
-//         }
-//     }
-// }
-
 void reset_fds() {
     FD_ZERO(&trader_pool->rfds); // clear all
     FD_ZERO(&exchange_pool->rfds);
@@ -176,8 +145,6 @@ int main(int argc, char ** argv) {
             if (success) {
                 match_order();                    
                 report_order_book();
-            } else {
-                puts("unsuccessful");
             }
         } 
         sigusr1_received = 0;
@@ -340,7 +307,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
 
             if (success_order) {
                 puts("success cancel");
-                order = cancel_order(id, order_id);
+                order = amend_order(id, order_id, 0, 0);
                 write(fd_exchange, write_line, strlen(write_line));
             } 
         }
@@ -398,18 +365,18 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     if (highest_buy->qty > lowest_sell->qty) {
         // sell is fullfilled, amend buy
         buy_fill_qty = lowest_sell->qty;
-        cancel_order(lowest_sell->trader_id, lowest_sell->order_id);
+        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
         amend_order(highest_buy->trader_id, highest_buy->order_id, 
                     (highest_buy->qty - buy_fill_qty), highest_buy->price);
     } else if (highest_buy->qty < lowest_sell->qty) {
         // buy is fullfilled, amend sell
         sell_fill_qty = highest_buy->qty;
-        cancel_order(highest_buy->trader_id, highest_buy->order_id);
+        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
         amend_order(lowest_sell->trader_id, lowest_sell->order_id, 
                     (lowest_sell->qty - sell_fill_qty), lowest_sell->price);
     } else {
-        cancel_order(highest_buy->trader_id, highest_buy->order_id);
-        cancel_order(lowest_sell->trader_id, lowest_sell->order_id);
+        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0);
+        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0);
     }
 
     // -------------------- value + fee -----------------------

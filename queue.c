@@ -132,8 +132,3 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
     }
     return NULL;
 }
-
-order_node cancel_order(int trader_id, int order_id) {
-    // TODO: check buy/sell_level; free mem
-    return NULL;
-}

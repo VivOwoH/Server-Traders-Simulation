@@ -53,6 +53,5 @@ void create_orderbook(int num_traders, int product_num, char ** product_ls);
 order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price);
 void add_order(order_node node);
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price);
-order_node cancel_order(int trader_id, int order_id);
 
 #endif
