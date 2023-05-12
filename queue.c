@@ -217,6 +217,18 @@ void remove_order(order_node order, orderbook_node book) {
 
     // if (!found) return;
 
+    // tail order update
+    if (order == book->tail_order) {
+        book->tail_order = NULL;
+        order_node tmp = order->prev;
+        while (tmp != NULL) {
+            if (tmp->order_type == SELL_ORDER) {
+                book->tail_order = tmp;
+                break;
+            }
+            tmp = tmp->prev;
+        }
+    }
     // remove this order from book
     if (order == book->head_order && order->next != NULL) {
         book->head_order = order->next;
