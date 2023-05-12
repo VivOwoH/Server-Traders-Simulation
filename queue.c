@@ -88,10 +88,14 @@ void check_unique_price(orderbook_node book, order_node node, int val) {
             return; // found same price
         curr = curr->next;
     } 
-    if (node->order_type == BUY_ORDER)
+    if (node->order_type == BUY_ORDER) {
         book->buy_level += val;
-    else
+        printf("buy level:%d\n", book->buy_level);
+    } else {
         book->sell_level += val;
+        printf("sell level:%d\n", book->sell_level);
+    }
+        
     return;
 }
 
@@ -166,11 +170,13 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price) 
         exit(6);
     }
     
-    if (new_price == 0 && curr->order_type == BUY_ORDER) 
+    if (new_price == 0 && curr->order_type == BUY_ORDER) {
         book->buy_level--;
-    else if (new_price == 0 && curr->order_type == SELL_ORDER)
+        printf("buy level:%d\n", book->buy_level);
+    } else if (new_price == 0 && curr->order_type == SELL_ORDER) {
         book->sell_level--;
-    else check_unique_price(book, curr, -1);
+        printf("sell level:%d\n", book->sell_level);
+    } else check_unique_price(book, curr, -1);
     
     curr->qty = new_qty;
     curr->price = new_price;

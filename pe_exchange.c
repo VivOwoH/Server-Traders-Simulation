@@ -241,9 +241,9 @@ int valid_check(int trader_id, int order_type, int order_id, char * product, int
                 found = 1;
                 break;
             }
-            printf("differnt:%s %s\n", product_ls[i], product);
+            // printf("differnt:%s %s\n", product_ls[i], product);
         }
-        printf("%d %d\n", valid, found);
+        // printf("valid:%d found:%d\n", valid, found);
         valid = found;
     }
     return valid;
@@ -458,7 +458,7 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
 }
 
 void match_order() {
-    puts("start match......");
+    // puts("start match......");
     orderbook_node book = NULL;
     order_node highest_buy = NULL;
     order_node lowest_sell = NULL;
@@ -469,7 +469,7 @@ void match_order() {
         int cont = 1;
         lowest_sell = book->tail_order;
         while (cont && lowest_sell != NULL) {
-            puts("matching order......");
+            // puts("matching order......");
             lowest_sell = book->tail_order;
 
             if (lowest_sell->price == 0 && lowest_sell->qty == 0) {
