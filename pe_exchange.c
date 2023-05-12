@@ -361,6 +361,9 @@ void match_order_report(order_node highest_buy, order_node lowest_sell) {
     int buy_fill_qty = highest_buy->qty;
     int sell_fill_qty = lowest_sell->qty;
 
+    printf("lowest:p%d q%d\n", lowest_sell->price, lowest_sell->qty);
+    printf("highest:p%d q%d\n", highest_buy->price, highest_buy->qty);
+
     // -------------------- Fill + Amend -----------------------
     if (highest_buy->qty > lowest_sell->qty) {
         // sell is fullfilled, amend buy
