@@ -510,9 +510,10 @@ void report_order_book() {
             qty = curr->qty;
             price = curr->price;
             if (qty == 0 && price == 0) {
-                assert(curr->next == NULL); // must be last node
-                remove_order(curr, book);
-                break;
+                order_node tmp = curr;
+                curr = curr->next;
+                remove_order(tmp, book);
+                continue;
             }
             num_order = 1;
             sec_qty = 0;
