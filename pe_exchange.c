@@ -283,7 +283,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
         char write_line[BUFFLEN];
         
         if (strcmp(cmd, CMD_STRING[BUY]) == 0 &&
-                    sscanf(line, BUY_MSG, &order_id, product, &qty, &price, &dummy) == 4) {
+                    sscanf(line, CHK_BUY_MSG, &order_id, product, &qty, &price, &dummy) == 4) {
             success_order = valid_check(id, BUY, order_id, product, qty, price);
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             // printf("buy case: %d \n", success_order);
@@ -299,7 +299,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         } 
         else if (strcmp(cmd, CMD_STRING[SELL]) == 0 &&
-                    sscanf(line, SELL_MSG, &order_id, product, &qty, &price, &dummy) == 4) {
+                    sscanf(line, CHK_SELL_MSG, &order_id, product, &qty, &price, &dummy) == 4) {
             success_order = valid_check(id, SELL, order_id, product, qty, price);
             snprintf(write_line, BUFFLEN, MARKET_ACPT_MSG, order_id);
             // printf("sell case: %d \n", success_order);
@@ -315,7 +315,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         }  
         else if (strcmp(cmd, CMD_STRING[AMEND]) == 0 &&
-                    sscanf(line, AMD_MSG, &order_id, &qty, &price, &dummy) == 3) {
+                    sscanf(line, CHK_AMD_MSG, &order_id, &qty, &price, &dummy) == 3) {
             success_order = valid_check(id, AMEND, order_id, product, qty, price);
             snprintf(write_line, BUFFLEN, MARKET_AMD_MSG, order_id);
             // printf("amend case: %d \n", success_order);
@@ -329,7 +329,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
             }
         }
         else if (strcmp(cmd, CMD_STRING[CANCEL]) == 0 &&
-                    sscanf(line, CANCL_MSG, &order_id, &dummy) == 1) {
+                    sscanf(line, CHK_CANCL_MSG, &order_id, &dummy) == 1) {
             success_order = valid_check(id, CANCEL, order_id, product, qty, price);
             snprintf(write_line, BUFFLEN, MARKET_CANCL_MSG, order_id);
             // printf("cancel case: %d \n", success_order);
