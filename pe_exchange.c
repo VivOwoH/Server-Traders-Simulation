@@ -235,12 +235,15 @@ int valid_check(int trader_id, int order_type, int order_id, char * product, int
     int found = 0;
     if (order_type == BUY || order_type == SELL) {
         for (int i = 0; i < product_num; i++) {
-            found = (strcmp(product_ls[i], product)==0) ? 1 : found;
-            break;
+            if (strcmp(product_ls[i], product) == 0) {
+                found = 1;
+                break;
+            }
+            printf("differnt:%s %s\n", product_ls[i], product);
         }
+        printf("%d %d\n", valid, found);
         valid = found;
     }
-    printf("found:%d\n", found);
     return valid;
 }
 
