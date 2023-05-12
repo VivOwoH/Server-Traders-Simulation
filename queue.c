@@ -109,6 +109,7 @@ void add_order(order_node node, orderbook_node book) {
                 tmp->next = node;
                 node->prev = tmp;
                 puts("i will be last");
+                break;
             }
             tmp = tmp->next;
         }
