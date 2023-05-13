@@ -6,8 +6,7 @@ int fd_read = -1; // read file descriptor
 int fd_write = -1; // write file descriptor
 pid_t pid = -1;
 pid_t parent_pid = -1;
-int msg_sent = 0;
-int msg_accepted = 0;
+int market_flag = 0; // 0=closed, 1=open 
 
 // ----------------------------------------------------------
 // ------------------------- SIGNAL -------------------------
@@ -61,19 +60,8 @@ int main(int argc, char ** argv) {
         sigprocmask(SIG_BLOCK, &mask, &prev); // block
         // wait for sigusr1 to be received
         sigsuspend(&prev);
-        char * last_msg = malloc(strlen(input) + 1);
 
         cont = event();
-        if (msg_sent && !msg_accepted) {
-            sleep(2);
-            if (!msg_accepted) { // resent last msg
-                write(fd_write, last_msg, strlen(last_msg));
-                kill(parent_pid, SIGUSR1);
-            }
-        } else if (msg_sent && msg_accepted) {
-            msg_accepted = 0;
-            msg_sent = 0;
-        }
         
         sigprocmask(SIG_SETMASK, &prev, NULL); // unblock
     }
@@ -92,6 +80,7 @@ int event() {
     if (read(fd_read, line, sizeof(line)) > 0) {
         if (strcmp(arg0, MARKET_OPEN_MSG) == 0) {
             // indicate market open and finishes this event
+            market_flag = 1; 
             return 1;
         }
 
@@ -118,9 +107,8 @@ int event() {
         if (strcmp(cmd, CMD_STRING[SELL]) == 0) {
             char write_line[BUFFLEN];
             snprintf(write_line, BUFFLEN, BUY_MSG, order_id, product, qty, price);
-            msg_sent = 1;
-            snprintf(last_msg, strlen(write_line)+1, "%s", write_line);
             write(fd_write, write_line, strlen(write_line));
+
             kill(parent_pid, SIGUSR1);
         }
     } 
@@ -129,7 +117,6 @@ int event() {
         sscanf(line, MARKET_ACPT_MSG, &given_order_id); // rescan
         assert(given_order_id == order_id && "order id inconsistency in market and trader");
         order_id++;
-        msg_accepted = 1;
     }
     return 1;
 }
