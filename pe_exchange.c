@@ -495,20 +495,14 @@ void match_order() {
             }
 
             // -------------------------------------------------------
-            if (book->head_order != NULL && book->head_order->price != 0 
-                    && book->head_order->qty != 0 
-                    && book->head_order->order_type == BUY_ORDER) {
-                highest_buy = book->head_order;
-            } else {
-                head_curr = book->head_order; // first buy order
-                while (head_curr != NULL && 
-                        head_curr->price != 0 && head_curr->qty != 0) { 
-                    if (head_curr->order_type == BUY_ORDER) {
-                        highest_buy = head_curr;
-                        break;
-                    }
-                    head_curr = head_curr->next;
+            head_curr = book->head_order; // first buy order
+            while (head_curr != NULL) { 
+                if (head_curr->order_type == BUY_ORDER && 
+                        head_curr->price != 0 && head_curr->qty != 0) {
+                    highest_buy = head_curr;
+                    break;
                 }
+                head_curr = head_curr->next;
             }
             
             order_node tmp = lowest_sell->prev; // find earliest lowest price

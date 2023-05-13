@@ -171,7 +171,7 @@ void update_orderbook(orderbook_node book, order_node order) {
     order->next = NULL;
     order->prev = NULL;    
 
-    add_order(order, book);
+    add_order(order, book); // just for ordering
 }
 
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price, int new_time) {
