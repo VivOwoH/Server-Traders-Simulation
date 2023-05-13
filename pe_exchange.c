@@ -478,21 +478,21 @@ void match_order() {
         lowest_sell = book->tail_order;
         while (cont && lowest_sell != NULL) {
             // puts("matching order......");
-            if (lowest_sell->price == 0 && lowest_sell->qty == 0) {
-                // assert(lowest_sell->next == NULL); // must be last node
-                order_node tmp = lowest_sell->prev;
-                while (tmp != NULL) {
-                    if (tmp->order_type == SELL_ORDER && 
-                            tmp->price != 0 && tmp->qty != 0) {
-                        book->tail_order = tmp;
-                        lowest_sell = tmp;
-                        break;
-                    }
-                    tmp = tmp->prev;
-                }
-                if (lowest_sell->price == 0 && lowest_sell->qty == 0)
-                    break; // doesnt have a lowest sell any more
-            }
+            assert(lowest_sell->price != 0 && lowest_sell->qty != 0); // must be last node
+            // if (lowest_sell->price == 0 && lowest_sell->qty == 0) {
+            //     order_node tmp = lowest_sell->prev;
+            //     while (tmp != NULL) {
+            //         if (tmp->order_type == SELL_ORDER && 
+            //                 tmp->price != 0 && tmp->qty != 0) {
+            //             book->tail_order = tmp;
+            //             lowest_sell = tmp;
+            //             break;
+            //         }
+            //         tmp = tmp->prev;
+            //     }
+            //     if (lowest_sell->price == 0 && lowest_sell->qty == 0)
+            //         break; // doesnt have a lowest sell any more
+            // }
 
             head_curr = book->head_order;
             while (head_curr != NULL) {
