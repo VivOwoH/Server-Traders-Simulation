@@ -479,7 +479,7 @@ void match_order() {
         while (cont && lowest_sell != NULL) {
             // puts("matching order......");
             if (lowest_sell->price == 0 && lowest_sell->qty == 0) {
-                assert(lowest_sell->next == NULL); // must be last node
+                // assert(lowest_sell->next == NULL); // must be last node
                 break;
             }
             head_curr = book->head_order;

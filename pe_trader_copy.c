@@ -6,7 +6,6 @@ int fd_read = -1; // read file descriptor
 int fd_write = -1; // write file descriptor
 pid_t pid = -1;
 pid_t parent_pid = -1;
-char last_msg[BUFFLEN];
 int msg_sent = 0;
 int msg_accepted = 0;
 
@@ -62,6 +61,7 @@ int main(int argc, char ** argv) {
         sigprocmask(SIG_BLOCK, &mask, &prev); // block
         // wait for sigusr1 to be received
         sigsuspend(&prev);
+        char * last_msg = malloc(strlen(input) + 1);
 
         cont = event();
         if (msg_sent && !msg_accepted) {
