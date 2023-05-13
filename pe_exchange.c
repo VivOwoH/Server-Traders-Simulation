@@ -532,7 +532,7 @@ void report_order_book() {
             if (qty == 0 && price == 0) {
                 order_node tmp = curr;
                 curr = curr->next;
-                remove_order(tmp, book);
+                // remove_order(tmp, book);
                 continue;
             }
             num_order = 1;
