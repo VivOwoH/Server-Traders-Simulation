@@ -206,18 +206,18 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price, 
 
 void remove_order(order_node order, orderbook_node book) {
     // tail order update
-    if (order == book->tail_order) {
-        book->tail_order = NULL;
-        order_node tmp = order->prev;
-        while (tmp != NULL) {
-            if (tmp->order_type == SELL_ORDER 
-                    && tmp->price != 0 && tmp->qty != 0) {
-                book->tail_order = tmp;
-                break;
-            }
-            tmp = tmp->prev;
-        }
-    }
+    // if (order == book->tail_order) {
+    //     book->tail_order = NULL;
+    //     order_node tmp = order->prev;
+    //     while (tmp != NULL) {
+    //         if (tmp->order_type == SELL_ORDER 
+    //                 && tmp->price != 0 && tmp->qty != 0) {
+    //             book->tail_order = tmp;
+    //             break;
+    //         }
+    //         tmp = tmp->prev;
+    //     }
+    // }
     // remove this order from book
     if (order == book->head_order && order->next != NULL) {
         book->head_order = order->next;
@@ -231,6 +231,7 @@ void remove_order(order_node order, orderbook_node book) {
         order->prev->next = order->next;
     }
     free(order);
+    check_pointer(book);
     return;
 }
 
