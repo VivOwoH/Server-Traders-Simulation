@@ -150,8 +150,18 @@ order_node add_order(order_node node, orderbook_node book) {
         }
     }
     if (node->order_type == SELL_ORDER &&  node->price != 0 && node->qty != 0 &&
-            (book->tail_order == NULL || node->price <= book->tail_order->price))
+            book->tail_order == NULL)
         book->tail_order = node;
+
+    // re-calculate
+    order_node curr = book->head_order;
+    order_node tail = NULL;
+    while (curr != NULL) {
+        if (curr->price != 0 && curr->qty != 0 && curr->order_type == SELL_ORDER)
+            tail = curr;
+        curr = curr->next;
+    }
+    book->tail_order = tail;
     
     return node;
 }
@@ -236,8 +246,8 @@ void check_pointer(orderbook_node book) {
             tail = curr;
         curr = curr->next;
     }
-    // assert(book->tail_order == tail);
-    book->tail_order = tail;
+    assert(book->tail_order == tail);
+    // book->tail_order = tail;
 }
 
 void free_orderbook() {
