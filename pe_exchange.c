@@ -296,6 +296,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 kill(pids[id], SIGUSR1);
                 order = create_order(BUY_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order, NULL);
+                assert(strcmp(order->product, product)==0);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
             }
@@ -313,6 +314,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 kill(pids[id], SIGUSR1);
                 order = create_order(SELL_ORDER, order_time, pids[id], id, order_id, product, qty, price);
                 add_order(order, NULL);
+                assert(strcmp(order->product, product)==0);
                 order_id_ls[id] = order_id + 1;
                 order_time++; // increment counter
             }
@@ -329,6 +331,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = amend_order(id, order_id, qty, price, order_time);
+                assert(strcmp(order->product, get_order_by_ids(id, order_id)->product)==0);
                 order_time++; // increment counter
             }
         }
@@ -344,6 +347,7 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = amend_order(id, order_id, 0, 0, order_time);
+                assert(strcmp(order->product, get_order_by_ids(id, order_id)->product)==0);
                 order_time++; // increment counter
             } 
         }

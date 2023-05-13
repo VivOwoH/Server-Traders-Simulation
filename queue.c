@@ -189,7 +189,6 @@ order_node amend_order(int trader_id, int order_id, int new_qty, int new_price, 
     check_unique_price(book, curr, -1);
     curr->qty = new_qty;
     curr->price = new_price;
-    curr->product = book->product; // just in case
     curr->time = new_time;
     update_orderbook(book, curr);
     return curr;
