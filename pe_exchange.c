@@ -493,7 +493,7 @@ void match_order() {
                 if (lowest_sell->price == 0 && lowest_sell->qty == 0)
                     break; // doesnt have a lowest sell any more
             }
-            
+
             // -------------------------------------------------------
             if (book->head_order->price != 0 && book->head_order->qty != 0 &&
                      book->head_order->order_type == BUY_ORDER) {
@@ -522,6 +522,7 @@ void match_order() {
                 match_order_report(book, highest_buy, lowest_sell);
             } else cont = 0;
 
+            highest_buy = NULL;
             lowest_sell = book->tail_order; // would restore if there are multiple lowest
         } 
     }
