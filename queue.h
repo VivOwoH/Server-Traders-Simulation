@@ -9,14 +9,6 @@
 
 typedef void handler_t(int, siginfo_t *, void *);
 
-struct queue
-{
-    int trader_id;
-    struct queue *next;
-};
-typedef struct queue * signal_node;
-extern signal_node head_sig;
-
 struct linkedList
 {
     int order_type;
@@ -47,15 +39,15 @@ extern orderbook_node * orderbook;
 
 handler_t *Signal(int signum, handler_t *handler); // [1] signal to catch;
                                                    // [2] pointer to the function that will be called when the signal is received
-signal_node create_signal(int trader_id);
-void enqueue(signal_node node);
-void dequeue();
 void create_orderbook(int num_traders, int product_num, char ** product_ls);
+orderbook_node get_orderbook_by_product(char * product);
 order_node get_order_by_ids(int trader_id, int order_id);
 order_node create_order(int type, int time, int pid, int trader_id, int order_id, char *product, int qty, int price);
+void check_unique_price(orderbook_node book, order_node node, int val);
 order_node add_order(order_node node, orderbook_node book);
-void remove_order(order_node order, orderbook_node book);
+void update_orderbook(orderbook_node book, order_node order);
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price, int new_time);
+void remove_order(order_node order, orderbook_node book);
 void free_orderbook();
 
 #endif
