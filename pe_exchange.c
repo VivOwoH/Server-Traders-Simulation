@@ -466,13 +466,16 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
 
 void match_order() {
     // puts("start match......");
+    int cont = 1;
+    orderbook_node book = NULL;
+    order_node highest_buy = NULL;
+    order_node lowest_sell = NULL;
+    order_node head_curr = NULL;
+    
     for (int i = 0; i < product_num; i++) {
-        orderbook_node book = orderbook[i];
-        int cont = 1;
-        order_node lowest_sell = book->tail_order;
-        order_node highest_buy = NULL;
-        order_node head_curr = NULL;
-        
+        book = orderbook[i];
+        cont = 1;
+        lowest_sell = book->tail_order;
         while (cont && lowest_sell != NULL) {
             // puts("matching order......");
             // assert(lowest_sell->price != 0 && lowest_sell->qty != 0);

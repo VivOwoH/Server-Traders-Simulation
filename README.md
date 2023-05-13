@@ -45,4 +45,8 @@ In addition to the specification of the auto-trader, the trader has a alarm for 
 
 ## 3. Describe your tests and how to run them.
 
-Due to the lack of time, I did not produce any tests of my own. 
+To run the tests, run "make run_tests".
+
+Due to the lack of time, I have only produced unit-tests for the queue.c source file, which contains the main orderbook data structures. The unit-tests tests for individual functions, and in each test contains both valid/invalid cases. 
+The list of functions tested can be found in queue.h file, and the comments above testcases briefly explains what each of them does.
+

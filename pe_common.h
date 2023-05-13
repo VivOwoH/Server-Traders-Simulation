@@ -1,5 +1,7 @@
 #ifndef PE_COMMON_H
 #define PE_COMMON_H
+#ifndef _POSIX_SOURCE
+#define _POSIX_SOURCE
 
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE
@@ -21,4 +23,5 @@
 #define FIFO_TRADER "/tmp/pe_trader_%d"
 #define FEE_PERCENTAGE 1
 
+#endif
 #endif
