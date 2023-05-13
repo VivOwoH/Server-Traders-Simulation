@@ -495,8 +495,9 @@ void match_order() {
             }
 
             // -------------------------------------------------------
-            if (book->head_order->price != 0 && book->head_order->qty != 0 &&
-                     book->head_order->order_type == BUY_ORDER) {
+            if (book->head_order != NULL && book->head_order->price != 0 
+                    && book->head_order->qty != 0 
+                    && book->head_order->order_type == BUY_ORDER) {
                 highest_buy = book->head_order;
             } else {
                 head_curr = book->head_order; // first buy order
@@ -511,9 +512,9 @@ void match_order() {
             }
             
             order_node tmp = lowest_sell->prev; // find earliest lowest price
-            while (tmp != NULL && tmp->order_type == SELL_ORDER 
-                    && (lowest_sell->price == tmp->price)) {
-                lowest_sell = tmp;
+            while (tmp != NULL && (lowest_sell->price == tmp->price)) {
+                if (tmp->order_type == SELL_ORDER)
+                    lowest_sell = tmp;
                 tmp = tmp->prev;
             }
             
