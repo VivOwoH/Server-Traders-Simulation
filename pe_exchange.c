@@ -329,7 +329,6 @@ int rw_trader(int id, int fd_trader, int fd_exchange) {
                 write(fd_exchange, write_line, strlen(write_line));
                 kill(pids[id], SIGUSR1);
                 order = amend_order(id, order_id, qty, price, order_time);
-                assert(strcmp(order->product, get_order_by_ids(id, order_id)->product)==0);
                 order_time++; // increment counter
             }
         }
@@ -481,8 +480,17 @@ void match_order() {
             // puts("matching order......");
             if (lowest_sell->price == 0 && lowest_sell->qty == 0) {
                 // assert(lowest_sell->next == NULL); // must be last node
-                break;
+                order_node tmp = lowest_sell->prev;
+                while (tmp != NULL) {
+                    if (tmp->order_type == SELL_ORDER) {
+                        lowest_sell = tmp;
+                        break;
+                    }
+                    tmp = tmp->prev;
+                }
+                continue;
             }
+
             head_curr = book->head_order;
             while (head_curr != NULL) {
                 if (head_curr->order_type == BUY_ORDER) {
