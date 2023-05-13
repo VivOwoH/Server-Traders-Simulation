@@ -478,29 +478,36 @@ void match_order() {
         lowest_sell = book->tail_order;
         while (cont && lowest_sell != NULL) {
             // puts("matching order......");
-            assert(lowest_sell->price != 0 && lowest_sell->qty != 0); // must be last node
-            // if (lowest_sell->price == 0 && lowest_sell->qty == 0) {
-            //     order_node tmp = lowest_sell->prev;
-            //     while (tmp != NULL) {
-            //         if (tmp->order_type == SELL_ORDER && 
-            //                 tmp->price != 0 && tmp->qty != 0) {
-            //             book->tail_order = tmp;
-            //             lowest_sell = tmp;
-            //             break;
-            //         }
-            //         tmp = tmp->prev;
-            //     }
-            //     if (lowest_sell->price == 0 && lowest_sell->qty == 0)
-            //         break; // doesnt have a lowest sell any more
-            // }
-
-            head_curr = book->head_order;
-            while (head_curr != NULL) {
-                if (head_curr->order_type == BUY_ORDER) {
-                    highest_buy = head_curr;
-                    break;
+            // assert(lowest_sell->price != 0 && lowest_sell->qty != 0);
+            if (lowest_sell->price == 0 && lowest_sell->qty == 0) {
+                order_node tmp = lowest_sell->prev;
+                while (tmp != NULL) {
+                    if (tmp->order_type == SELL_ORDER && 
+                            tmp->price != 0 && tmp->qty != 0) {
+                        book->tail_order = tmp;
+                        lowest_sell = tmp;
+                        break;
+                    }
+                    tmp = tmp->prev;
                 }
-                head_curr = head_curr->next;
+                if (lowest_sell->price == 0 && lowest_sell->qty == 0)
+                    break; // doesnt have a lowest sell any more
+            }
+            
+            // -------------------------------------------------------
+            if (book->head_order->price != 0 && book->head_order->qty != 0 &&
+                     book->head_order->order_type == BUY_ORDER) {
+                highest_buy = book->head_order;
+            } else {
+                head_curr = book->head_order; // first buy order
+                while (head_curr != NULL && 
+                        head_curr->price != 0 && head_curr->qty != 0) { 
+                    if (head_curr->order_type == BUY_ORDER) {
+                        highest_buy = head_curr;
+                        break;
+                    }
+                    head_curr = head_curr->next;
+                }
             }
             
             order_node tmp = lowest_sell->prev; // find earliest lowest price
