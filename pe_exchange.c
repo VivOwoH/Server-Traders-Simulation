@@ -482,13 +482,15 @@ void match_order() {
                 // assert(lowest_sell->next == NULL); // must be last node
                 order_node tmp = lowest_sell->prev;
                 while (tmp != NULL) {
-                    if (tmp->order_type == SELL_ORDER) {
+                    if (tmp->order_type == SELL_ORDER && 
+                            tmp->price != 0 && tmp->qty != 0) {
                         lowest_sell = tmp;
                         break;
                     }
                     tmp = tmp->prev;
                 }
-                continue;
+                if (lowest_sell->price == 0 && lowest_sell->qty == 0)
+                    break;
             }
 
             head_curr = book->head_order;
