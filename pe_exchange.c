@@ -517,7 +517,7 @@ void match_order() {
                 match_order_report(book, highest_buy, lowest_sell);
             } else cont = 0;
 
-            check_pointer(orderbook_node book);
+            check_pointer(book);
 
             highest_buy = NULL;
             lowest_sell = book->tail_order; // would restore if there are multiple lowest

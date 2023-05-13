@@ -236,7 +236,7 @@ void check_pointer(orderbook_node book) {
             tail = curr;
         curr = curr->next;
     }
-    assert(book->tail_order == curr);
+    assert(book->tail_order == tail);
 }
 
 void free_orderbook() {
