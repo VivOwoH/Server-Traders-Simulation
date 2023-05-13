@@ -536,7 +536,7 @@ void report_order_book() {
             }
             num_order = 1;
             sec_qty = 0;
-            sec_price = 0;
+            sec_price = curr->price;
             sec_num_order = 0;
             
             order_node tmp = curr->next;
@@ -544,11 +544,11 @@ void report_order_book() {
                 if (tmp->order_type == curr->order_type) {
                     qty += tmp->qty;
                     num_order++;
-                    tmp = tmp->next;
                 } else {
                     sec_qty += tmp->qty;
                     sec_num_order++;
                 }
+                tmp = tmp->next;
             }
 
             printf("%s\t\t%s %d @ $%d (%d ", 
