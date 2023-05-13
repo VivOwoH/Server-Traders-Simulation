@@ -404,15 +404,15 @@ void match_order_report(orderbook_node book, order_node highest_buy, order_node 
         // sell is fullfilled, amend buy
         // *Not actually amend, so dont change time
         buy_fill_qty = lowest_sell->qty;
-        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0, lowest_sell->time);
         amend_order(highest_buy->trader_id, highest_buy->order_id, 
                     (highest_buy->qty - buy_fill_qty), highest_buy->price, highest_buy->time);
+        amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0, lowest_sell->time);
     } else if (highest_buy->qty < lowest_sell->qty) {
         // buy is fullfilled, amend sell
         sell_fill_qty = highest_buy->qty;
-        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0, highest_buy->time);
         amend_order(lowest_sell->trader_id, lowest_sell->order_id, 
                     (lowest_sell->qty - sell_fill_qty), lowest_sell->price, lowest_sell->time);
+        amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0, highest_buy->time);
     } else {
         amend_order(highest_buy->trader_id, highest_buy->order_id, 0, 0, highest_buy->time);
         amend_order(lowest_sell->trader_id, lowest_sell->order_id, 0, 0, lowest_sell->time);
