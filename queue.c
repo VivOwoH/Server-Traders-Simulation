@@ -149,7 +149,7 @@ order_node add_order(order_node node, orderbook_node book) {
             tmp = tmp->next;
         }
     }
-    if (node->order_type == SELL_ORDER && 
+    if (node->order_type == SELL_ORDER &&  node->price != 0 && node->qty != 0 &&
             (book->tail_order == NULL || node->price <= book->tail_order->price))
         book->tail_order = node;
     

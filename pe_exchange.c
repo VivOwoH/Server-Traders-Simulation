@@ -484,13 +484,14 @@ void match_order() {
                 while (tmp != NULL) {
                     if (tmp->order_type == SELL_ORDER && 
                             tmp->price != 0 && tmp->qty != 0) {
+                        book->tail_order = tmp;
                         lowest_sell = tmp;
                         break;
                     }
                     tmp = tmp->prev;
                 }
                 if (lowest_sell->price == 0 && lowest_sell->qty == 0)
-                    break;
+                    break; // doesnt have a lowest sell any more
             }
 
             head_curr = book->head_order;
