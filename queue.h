@@ -49,5 +49,6 @@ void update_orderbook(orderbook_node book, order_node order);
 order_node amend_order(int trader_id, int order_id, int new_qty, int new_price, int new_time);
 void remove_order(order_node order, orderbook_node book);
 void free_orderbook();
+void check_pointer(orderbook_node book);
 
 #endif

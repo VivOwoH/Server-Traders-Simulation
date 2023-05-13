@@ -224,6 +224,21 @@ void remove_order(order_node order, orderbook_node book) {
     return;
 }
 
+void check_pointer(orderbook_node book) {
+    // header
+    assert(book->head_order->prev == NULL);
+    
+    // tail
+    order_node curr = book->head_order;
+    order_node tail = NULL;
+    while (curr != NULL) {
+        if (curr->price != 0 && curr->qty != 0 && curr->order_type == SELL_ORDER)
+            tail = curr;
+        curr = curr->next;
+    }
+    assert(book->tail_order == curr);
+}
+
 void free_orderbook() {
     for (int i = 0; i < orderbook_size; i++) {
         orderbook_node book = orderbook[i];
