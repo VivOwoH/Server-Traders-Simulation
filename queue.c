@@ -200,7 +200,8 @@ void remove_order(order_node order, orderbook_node book) {
         book->tail_order = NULL;
         order_node tmp = order->prev;
         while (tmp != NULL) {
-            if (tmp->order_type == SELL_ORDER) {
+            if (tmp->order_type == SELL_ORDER 
+                    && tmp->price != 0 && tmp->qty != 0) {
                 book->tail_order = tmp;
                 break;
             }
