@@ -154,7 +154,6 @@ order_node add_order(order_node node, orderbook_node book) {
     //     book->tail_order = node;
 
     // re-calculate
-    book->tail_order = NULL;
     order_node curr = book->head_order;
     order_node tail = NULL;
     while (curr != NULL) {
