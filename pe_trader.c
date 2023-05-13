@@ -24,7 +24,7 @@ void timeout_handler(int s, siginfo_t *info, void *context) {
     // Timeout occurred
     if (!msg_sent) return;
 
-    if (msg_sent && retry == 3) {
+    if (msg_sent && retry == MAX_RETRY) {
         perror("time out");
         exit(1);
     }

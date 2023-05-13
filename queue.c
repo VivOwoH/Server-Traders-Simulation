@@ -130,13 +130,13 @@ order_node add_order(order_node node, orderbook_node book) {
                 //     tmp_2->prev = node;
                 // } 
                 // else {
-                    // puts("i will be inserted");
-                    book->head_order = (tmp==book->head_order) ? node : book->head_order;
-                    node->next = tmp;
-                    node->prev = tmp->prev;
-                    if (tmp->prev != NULL)
-                        tmp->prev->next = node; 
-                    tmp->prev = node;
+                // puts("i will be inserted");
+                book->head_order = (tmp==book->head_order) ? node : book->head_order;
+                node->next = tmp;
+                node->prev = tmp->prev;
+                if (tmp->prev != NULL)
+                    tmp->prev->next = node; 
+                tmp->prev = node;
                 // }
                 break;
             }
