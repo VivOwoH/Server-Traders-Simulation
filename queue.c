@@ -114,22 +114,22 @@ order_node add_order(order_node node, orderbook_node book) {
         order_node tmp = book->head_order;
         while(tmp != NULL) {
             if (node->price > tmp->price) {
-                // prev node same price case (we want sell above buy)
-                if (tmp->prev != NULL && node->price == tmp->prev->price 
-                    && node->order_type == SELL_ORDER && tmp->prev->order_type == BUY_ORDER) {
-                    order_node tmp_2 = tmp;
-                    while (tmp_2->prev != NULL && node->price == tmp_2->prev->price 
-                                && tmp_2->prev->order_type == BUY_ORDER) {
-                        tmp_2 = tmp_2->prev;
-                    }
-                    // now tmp_2 is the last node i want to be on top of
-                    node->next = tmp_2;
-                    node->prev = tmp_2->prev;
-                    if (tmp_2->prev != NULL)
-                        tmp_2->prev->next = node; 
-                    tmp_2->prev = node;
-                } 
-                else {
+                // // prev node same price case (we want sell above buy)
+                // if (tmp->prev != NULL && node->price == tmp->prev->price 
+                //     && node->order_type == SELL_ORDER && tmp->prev->order_type == BUY_ORDER) {
+                //     order_node tmp_2 = tmp;
+                //     while (tmp_2->prev != NULL && node->price == tmp_2->prev->price 
+                //                 && tmp_2->prev->order_type == BUY_ORDER) {
+                //         tmp_2 = tmp_2->prev;
+                //     }
+                //     // now tmp_2 is the last node i want to be on top of
+                //     node->next = tmp_2;
+                //     node->prev = tmp_2->prev;
+                //     if (tmp_2->prev != NULL)
+                //         tmp_2->prev->next = node; 
+                //     tmp_2->prev = node;
+                // } 
+                // else {
                     // puts("i will be inserted");
                     book->head_order = (tmp==book->head_order) ? node : book->head_order;
                     node->next = tmp;
@@ -137,7 +137,7 @@ order_node add_order(order_node node, orderbook_node book) {
                     if (tmp->prev != NULL)
                         tmp->prev->next = node; 
                     tmp->prev = node;
-                }
+                // }
                 break;
             }
             if (tmp->next == NULL) { // last node

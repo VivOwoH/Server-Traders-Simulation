@@ -7,7 +7,8 @@ int fd_write = -1; // write file descriptor
 pid_t pid = -1;
 pid_t parent_pid = -1;
 int msg_sent = 0;
-int msg_accepted = 0;
+int signaled = 0;
+int retry = 0;
 char write_line[BUFFLEN];
 
 // ----------------------------------------------------------
@@ -15,7 +16,28 @@ char write_line[BUFFLEN];
 // ----------------------------------------------------------
 void sigusr1_handler(int s, siginfo_t *info, void *context) {
     puts("trader received sigusr1");
+    if (msg_sent) signaled = 1;
     return;
+}
+
+void timeout_handler(int s, siginfo_t *info, void *context) {
+    // Timeout occurred
+    if (!msg_sent) return;
+
+    if (msg_sent && retry == 3) {
+        perror("time out");
+        exit(1);
+    }
+    else if (msg_sent && !signaled) {
+        // resent
+        write(fd_write, write_line, strlen(write_line));
+        kill(parent_pid, SIGUSR1);
+        retry++;
+    } else {
+        msg_sent = 0;
+        signaled = 0;
+        retry = 0;
+    }
 }
 
 // ----------------------------------------------------------
@@ -37,6 +59,7 @@ int main(int argc, char ** argv) {
     sigset_t mask, prev;
 
     Signal(SIGUSR1, sigusr1_handler);
+    Signal(SIGALRM, timeout_handler);
     sigemptyset(&mask); // clears all signals in mask
     sigaddset(&mask, SIGUSR1); // add sigusr1 to the set
 
@@ -61,19 +84,10 @@ int main(int argc, char ** argv) {
     while (cont) {
         sigprocmask(SIG_BLOCK, &mask, &prev); // block
         // wait for sigusr1 to be received
+        alarm(3);
         sigsuspend(&prev);
 
         cont = event();
-        if (msg_sent && !msg_accepted) {
-            sleep(2);
-            if (!msg_accepted) { // resent last msg
-                write(fd_write, write_line, strlen(write_line));
-                kill(parent_pid, SIGUSR1);
-            }
-        } else if (msg_sent && msg_accepted) {
-            msg_accepted = 0;
-            msg_sent = 0;
-        }
         
         sigprocmask(SIG_SETMASK, &prev, NULL); // unblock
     }
@@ -127,7 +141,6 @@ int event() {
         sscanf(line, MARKET_ACPT_MSG, &given_order_id); // rescan
         assert(given_order_id == order_id && "order id inconsistency in market and trader");
         order_id++;
-        msg_accepted = 1;
     }
     return 1;
 }
