@@ -37,6 +37,8 @@ Note that the tail_order is not the last node in the list, but the sell order wi
 
 There will be individual order book for each product. Each orderbook include unique sell and buy level, a list of numbers of this product held per trader, and a list of exchange fee put in this product per trader. 
 
+A note for reflection is that due to lack of time, the linkedlist operations are not optimized and there is a lot of dependency between them, causing debug to be very difficult, especially when it comes to updating head/tail order pointers. It was also not ideal that  I introduced remove order separated from cancel order (i.e. I implement it as amend order (0,0), because I still need to print the market message). I was doing a lot of condition checking to ensure (0,0) orders are skipped when reporting and matching orders, but made debugging all cases difficult. The input checking should also be done in queue.c instead of in exchange, as it will allow checking invalid cases in unit tests.
+
 
 ## 2. Describe your design decisions for the trader and how it's fault-tolerant.
 
@@ -47,6 +49,5 @@ In addition to the specification of the auto-trader, the trader has a alarm for 
 
 To run the tests, run "make run_tests".
 
-Due to the lack of time, I have only produced unit-tests for the queue.c source file, which contains the main orderbook data structures. The unit-tests tests for individual functions, and in each test contains both valid/invalid cases. 
-The list of functions tested can be found in queue.h file, and the comments above testcases briefly explains what each of them does.
+Due to the lack of time, I did not produce any E2E tests. I have produced unit-tests for the queue.c source file, which contains the main orderbook data structures. The unit-tests tests maps to individual functions in queue.c, and most tests contain both valid and invalid cases. There are some that cannot test invalid cases, because input checking is done in exchange. The comments above testcases briefly explains what each of them does.
 
