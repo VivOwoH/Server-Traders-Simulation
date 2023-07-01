@@ -1,4 +1,6 @@
-# 1. Describe how your exchange works.
+# Server Traders Simulation
+
+## 1. Describe how your exchange works.
 
 ##### The flow of exchange is as follows:
 
